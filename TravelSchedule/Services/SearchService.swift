@@ -14,15 +14,7 @@ protocol SearchServiceProtocol {
     func getSchedualBetweenStations(from: String, to: String) async throws -> Search
 }
 
-final class SearchService: SearchServiceProtocol {
-    private let client: Client
-    private let apikey: String
-    
-    init(client: Client, apikey: String) {
-        self.client = client
-        self.apikey = apikey
-    }
-    
+final class SearchService: BaseService, SearchServiceProtocol {
     func getSchedualBetweenStations(from: String, to: String) async throws -> Search {
         let response = try await client.getSchedualBetweenStations(query: .init(
             apikey: apikey,

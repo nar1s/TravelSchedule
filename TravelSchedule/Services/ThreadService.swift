@@ -14,15 +14,7 @@ protocol ThreadServiceProtocol {
     func getRouteStations(uid: String) async throws -> Thread
 }
 
-final class ThreadService: ThreadServiceProtocol {
-    private let client: Client
-    private let apikey: String
-    
-    init(client: Client, apikey: String) {
-        self.client = client
-        self.apikey = apikey
-    }
-    
+final class ThreadService: BaseService, ThreadServiceProtocol {
     func getRouteStations(uid: String) async throws -> Thread {
         let response = try await client.getRouteStations(query: .init(
             apikey: apikey,
