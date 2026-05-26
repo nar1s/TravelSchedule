@@ -9,9 +9,23 @@ import SwiftUI
 
 @main
 struct TravelScheduleApp: App {
+    @State private var store: SearchStore? = Self.makeStore()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if let store {
+                RootView()
+                    .environment(store)
+            } else {
+                Text("Не удалось инициализировать приложение")
+            }
         }
+    }
+
+    private static func makeStore() -> SearchStore? {
+        guard let dependencies = try? AppDependencies(apikey: Constants.apiKey) else {
+            return nil
+        }
+        return SearchStore(dependencies: dependencies)
     }
 }

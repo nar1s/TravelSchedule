@@ -11,11 +11,11 @@ import OpenAPIURLSession
 typealias Search = Components.Schemas.Segments
 
 protocol SearchServiceProtocol {
-    func getSchedualBetweenStations(from: String, to: String) async throws -> Search
+    func getScheduleBetweenStations(from: String, to: String) async throws -> Search
 }
 
 final class SearchService: BaseService, SearchServiceProtocol {
-    func getSchedualBetweenStations(from: String, to: String) async throws -> Search {
+    func getScheduleBetweenStations(from: String, to: String) async throws -> Search {
         let response = try await client.getSchedualBetweenStations(query: .init(
             apikey: apikey,
             from: from,
@@ -23,5 +23,4 @@ final class SearchService: BaseService, SearchServiceProtocol {
         ))
         return try response.ok.body.json
     }
-    
 }
