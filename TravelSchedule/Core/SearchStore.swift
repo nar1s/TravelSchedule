@@ -39,33 +39,85 @@ final class SearchStore {
     private let dependencies: AppDependencies
 
     @ObservationIgnored
+    private let iso8601Formatters: [ISO8601DateFormatter] = {
+        let plain = ISO8601DateFormatter()
+        plain.formatOptions = [.withInternetDateTime]
+
+        let fractional = ISO8601DateFormatter()
+        fractional.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+
+        return [fractional, plain]
+    }()
+
+    @ObservationIgnored
     private let dateFormatters: [DateFormatter] = {
         let formats = [
-            "HH:mm:ss",
             "yyyy-MM-dd HH:mm:ss",
             "yyyy-MM-dd'T'HH:mm:ssZ",
-            "yyyy-MM-dd'T'HH:mm:ss",
-            "yyyy-MM-dd'T'HH:mm:ssXXXXX",
+            "yyyy-MM-dd'T'HH:mm:ssZZZZZ",
+            "yyyy-MM-dd'T'HH:mm:ss"
         ]
         return formats.map { format in
             let f = DateFormatter()
             f.locale = Locale(identifier: "en_US_POSIX")
+            f.calendar = Calendar(identifier: .gregorian)
+            f.isLenient = false
             f.dateFormat = format
             return f
         }
+    }()
+
+    @ObservationIgnored
+    private let apiDateFormatter: DateFormatter = {
+        let f = DateFormatter()
+        f.locale = Locale(identifier: "en_US_POSIX")
+        f.calendar = Calendar(identifier: .gregorian)
+        f.timeZone = .current
+        f.dateFormat = "yyyy-MM-dd"
+        return f
     }()
 
     init(dependencies: AppDependencies) {
         self.dependencies = dependencies
     }
 
-    private func parseDate(_ string: String?) -> Date? {
+    private func parseDate(_ string: String?, baseDate: Date?) -> Date? {
         guard let string, !string.isEmpty else { return nil }
+
+        for formatter in iso8601Formatters {
+            if let date = formatter.date(from: string) {
+                return date
+            }
+        }
+
         for formatter in dateFormatters {
             if let date = formatter.date(from: string) {
                 return date
             }
         }
+
+        guard let baseDate else { return nil }
+
+        if let match = string.range(of: #"^\d{2}:\d{2}(:\d{2})?$"#, options: .regularExpression) {
+            let value = String(string[match])
+            let parts = value.split(separator: ":").compactMap { Int($0) }
+            guard parts.count == 2 || parts.count == 3 else { return nil }
+
+            let hours = parts[0]
+            let minutes = parts[1]
+            let seconds = parts.count == 3 ? parts[2] : 0
+
+            var calendar = Calendar.current
+            calendar.timeZone = .current
+
+            var components = calendar.dateComponents([.year, .month, .day], from: baseDate)
+            components.hour = hours
+            components.minute = minutes
+            components.second = seconds
+
+            return calendar.date(from: components)
+        }
+
         return nil
     }
 
@@ -111,14 +163,19 @@ final class SearchStore {
         carriers = []
         isLoadingCarriers = true
         carriersError = nil
+
+        let searchDate = Calendar.current.startOfDay(for: Date())
+        let apiDate = apiDateFormatter.string(from: searchDate)
+
         do {
             let response = try await dependencies.searchService
                 .getScheduleBetweenStations(
                     from: from.id,
                     to: to.id,
+                    date: apiDate,
                     transfers: filter.showWithTransfers
                 )
-            carriers = mapToCarriers(response)
+            carriers = mapToCarriers(response, searchDate: searchDate)
         } catch {
             carriersError = ErrorMapper.map(error)
             carriers = []
@@ -134,14 +191,24 @@ final class SearchStore {
         }
     }
 
-    private func mapToCarriers(_ response: Search) -> [Carrier] {
+    private func mapToCarriers(_ response: Search, searchDate: Date) -> [Carrier] {
         let segments: [Components.Schemas.Segment] = response.segments ?? []
+        let calendar = Calendar.current
+
         let carriers: [Carrier] = segments.compactMap { segment -> Carrier? in
             guard let uid = segment.thread?.uid, !uid.isEmpty else { return nil }
+
             guard
-                let departure = parseDate(segment.departure),
-                let arrival = parseDate(segment.arrival)
+                let departure = parseDate(segment.departure, baseDate: searchDate),
+                let parsedArrival = parseDate(segment.arrival, baseDate: searchDate)
             else { return nil }
+
+            let arrival: Date
+            if parsedArrival < departure {
+                arrival = calendar.date(byAdding: .day, value: 1, to: parsedArrival) ?? parsedArrival
+            } else {
+                arrival = parsedArrival
+            }
 
             return Carrier(
                 id: uid,

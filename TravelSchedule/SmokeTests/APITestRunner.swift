@@ -168,6 +168,7 @@ final class APITestRunner {
             let search = try await service.getScheduleBetweenStations(
                 from: "c213",
                 to: "c20735",
+                date: nil,
                 transfers: true
             )
             logSuccess(testName, result: search)

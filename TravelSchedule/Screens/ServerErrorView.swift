@@ -12,16 +12,15 @@ struct ServerErrorView: View {
 
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.icloud")
+            Image(.serverError)
                 .font(.system(size: 48))
-                .foregroundStyle(.secondary)
 
             Text("Ошибка сервера")
-                .font(.title3)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(Color(.ypBlack))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color(.ypWhite))
         .task {
             try? await Task.sleep(for: .seconds(2))
             guard !Task.isCancelled else { return }

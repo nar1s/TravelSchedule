@@ -14,42 +14,73 @@ struct MainScreenView: View {
         @Bindable var bindableStore = store
 
         NavigationStack(path: $bindableStore.path) {
-            VStack(spacing: 16) {
-                Text("Главный экран")
-                    .font(.title2)
+            ZStack {
+                Color(.ypWhite)
+                    .ignoresSafeArea()
 
-                VStack(spacing: 12) {
-                    StationField(
-                        title: "Откуда",
-                        stationTitle: store.from?.title,
-                        action: { store.path.append(.cityList(direction: .from)) }
-                    )
+                VStack(spacing: 16) {
+                    searchCard
+                        .padding(.horizontal, 16)
+                        .padding(.top, 252)
 
-                    Button(action: store.swap) {
-                        Image(systemName: "arrow.up.arrow.down")
-                            .foregroundStyle(.blue)
+                    if store.from != nil && store.to != nil {
+                        Button {
+                            store.path.append(.carriers)
+                            Task { await store.search() }
+                        } label: {
+                            Text("Найти")
+                                .frame(width: 150, height: 60)
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(Color(.ypWhiteUniversal))
+                                .background(Color(.ypBlue))
+                                .cornerRadius(16)
+                        }
                     }
 
-                    StationField(
-                        title: "Куда",
-                        stationTitle: store.to?.title,
-                        action: { store.path.append(.cityList(direction: .to)) }
-                    )
-                }
-                .padding()
-
-                if store.from != nil && store.to != nil {
-                    Button("Найти") {
-                        store.path.append(.carriers)
-                        Task { await store.search() }
-                    }
-                    .padding()
+                    Spacer()
                 }
             }
             .navigationDestination(for: Route.self) { route in
                 destinationView(for: route)
             }
         }
+    }
+
+    private var searchCard: some View {
+        HStack(spacing: 16) {
+            VStack(spacing: 0) {
+                StationField(
+                    title: "Откуда",
+                    stationTitle: store.from?.title,
+                    action: { store.path.append(.cityList(direction: .from)) }
+                )
+
+                StationField(
+                    title: "Куда",
+                    stationTitle: store.to?.title,
+                    action: { store.path.append(.cityList(direction: .to)) }
+                )
+            }
+            .background(Color(.ypWhiteUniversal))
+            .cornerRadius(20)
+
+            Button(action: store.swap) {
+                Circle()
+                    .fill(Color(.ypWhiteUniversal))
+                    .frame(width: 36, height: 36)
+                    .overlay {
+                        Image(.switch)
+                            .resizable()
+                            .renderingMode(.template)
+                            .scaledToFit()
+                            .foregroundStyle(Color(.ypBlue))
+                            .frame(width: 20, height: 20)
+                    }
+            }
+        }
+        .padding(16)
+        .background(Color(.ypBlue))
+        .cornerRadius(20)
     }
 
     @ViewBuilder
@@ -59,44 +90,66 @@ struct MainScreenView: View {
             Group {
                 if let catalog = store.catalog {
                     SearchableListView(
-                        title: direction == .from ? "Откуда" : "Куда",
+                        title: "Выбор города",
                         items: catalog.cities,
                         searchableText: { $0.title },
                         displayText: { $0.title },
                         onSelect: { city in
                             store.path.append(.stationList(direction: direction, city: city))
-                        }
+                        },
+                        emptyMessage: "Город не найден"
                     )
-                } else {
-                    Text("Загрузка...")
                 }
             }
             .toolbar(.hidden, for: .tabBar)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    BackButton()
+                }
+            }
 
         case .stationList(let direction, let city):
             Group {
                 if let catalog = store.catalog {
                     SearchableListView(
-                        title: city.title,
+                        title: "Выбор станции",
                         items: catalog.stations(in: city),
                         searchableText: { $0.title },
                         displayText: { $0.title },
                         onSelect: { station in
                             store.setStation(station, for: direction)
-                        }
+                        },
+                        emptyMessage: "Станция не найдена"
                     )
-                } else {
-                    Text("Загрузка...")
                 }
             }
             .toolbar(.hidden, for: .tabBar)
+            .navigationBarBackButtonHidden(true)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    BackButton()
+                }
+            }
 
         case .carriers:
             CarriersListView()
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        BackButton()
+                    }
+                }
 
         case .filter:
             FilterView()
                 .toolbar(.hidden, for: .tabBar)
+                .navigationBarBackButtonHidden(true)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarLeading) {
+                        BackButton()
+                    }
+                }
         }
     }
 }
@@ -109,15 +162,15 @@ struct StationField: View {
     var body: some View {
         Button(action: action) {
             HStack {
-                Text(title)
-                    .foregroundStyle(.secondary)
+                Text(stationTitle ?? title)
+                    .foregroundStyle(stationTitle == nil ? Color(.ypGray) : Color(.ypBlackUniversal))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 Spacer()
-                Text(stationTitle ?? "Выбрать")
-                    .foregroundStyle(stationTitle == nil ? .blue : .primary)
             }
-            .padding()
-            .background(Color(.systemGray6))
-            .cornerRadius(8)
+            .padding(.horizontal, 16)
+            .frame(height: 48)
+            .contentShape(Rectangle())
         }
     }
 }

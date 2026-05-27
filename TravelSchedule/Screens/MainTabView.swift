@@ -13,52 +13,64 @@ struct MainTabView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        TabView {
-            MainScreenView()
-                .overlay { errorOverlay }
-                .tabItem {
-                    Label("Расписание", systemImage: "arrow.up.arrow.down")
-                }
+        ZStack {
+            Color(.ypWhite)
+                .ignoresSafeArea()
 
-            SettingsView()
-                .overlay { errorOverlay }
-                .tabItem {
-                    Label("Настройки", systemImage: "gearshape")
-                }
-        }
-        .onChange(of: connectivity.isOnline) { _, isOnline in
-            guard isOnline else { return }
-            if store.carriersError == .noInternet {
-                store.carriersError = nil
+            TabView {
+                MainScreenView()
+                    .overlay { errorOverlay }
+                    .tabItem {
+                        Image(.schedule)
+                            .renderingMode(.template)
+                            .accessibilityLabel("Расписание")
+                    }
+
+                SettingsView()
+                    .overlay { errorOverlay }
+                    .tabItem {
+                        Image(.settings)
+                            .renderingMode(.template)
+                            .accessibilityLabel("Настройки")
+                    }
             }
-            Task {
-                if store.catalog == nil {
-                    await store.loadCatalog()
+            .tint(.primary)
+            .toolbarBackground(Color(.ypWhite), for: .tabBar)
+            .toolbarBackground(.visible, for: .tabBar)
+            .onChange(of: connectivity.isOnline) { _, isOnline in
+                guard isOnline else { return }
+                if store.carriersError == .noInternet {
+                    store.carriersError = nil
                 }
-                let onCarriers = store.path.last == .carriers
-                let needsRetry = onCarriers
+                Task {
+                    if store.catalog == nil {
+                        await store.loadCatalog()
+                    }
+                    let onCarriers = store.path.last == .carriers
+                    let needsRetry = onCarriers
+                        && !store.isLoadingCarriers
+                        && store.carriers.isEmpty
+                    if needsRetry {
+                        await store.search()
+                    }
+                }
+            }
+            .onChange(of: scenePhase) {_, new in
+                guard new == .active, connectivity.isOnline else { return }
+                if store.carriersError == .noInternet {
+                    store.carriersError = nil
+                }
+                Task {
+                    if store.catalog == nil {
+                        await store.loadCatalog()
+                    }
+                    let onCarriers = store.path.last == .carriers
+                    let needsRetry = onCarriers
                     && !store.isLoadingCarriers
                     && store.carriers.isEmpty
-                if needsRetry {
-                    await store.search()
-                }
-            }
-        }
-        .onChange(of: scenePhase) {_, new in
-            guard new == .active, connectivity.isOnline else { return }
-            if store.carriersError == .noInternet {
-                store.carriersError = nil
-            }
-            Task {
-                if store.catalog == nil {
-                    await store.loadCatalog()
-                }
-                let onCarriers = store.path.last == .carriers
-                let needsRetry = onCarriers
-                && !store.isLoadingCarriers
-                && store.carriers.isEmpty
-                if needsRetry {
-                    await store.search()
+                    if needsRetry {
+                        await store.search()
+                    }
                 }
             }
         }

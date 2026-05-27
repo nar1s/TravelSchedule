@@ -10,16 +10,15 @@ import SwiftUI
 struct NoInternetView: View {
     var body: some View {
         VStack(spacing: 16) {
-            Image(systemName: "wifi.slash")
+            Image(.noInternet)
                 .font(.system(size: 48))
-                .foregroundStyle(.secondary)
 
             Text("Нет интернета")
-                .font(.title3)
-                .foregroundStyle(.secondary)
+                .font(.system(size: 24, weight: .bold))
+                .foregroundStyle(Color(.ypBlack))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color(.systemBackground))
+        .background(Color(.ypWhite))
     }
 }
 

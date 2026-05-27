@@ -18,6 +18,9 @@ struct RootView: View {
 
     var body: some View {
         ZStack {
+            Color(.ypWhite)
+                .ignoresSafeArea()
+
             switch phase {
             case .splash:
                 SplashView()
