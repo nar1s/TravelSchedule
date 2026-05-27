@@ -17,14 +17,33 @@ struct SearchableListView<Item: Identifiable & Hashable>: View {
     @State private var searchText = ""
 
     var body: some View {
-        SearchableListContent(
-            items: items,
-            searchableText: searchableText,
-            displayText: displayText,
-            onSelect: onSelect,
-            searchText: $searchText
-        )
-        .searchable(text: $searchText, prompt: "Поиск")
+        VStack(spacing: 0) {
+            HStack {
+                Image(systemName: "magnifyingglass")
+                    .foregroundStyle(.secondary)
+                TextField("Поиск", text: $searchText)
+                    .textFieldStyle(.plain)
+                if !searchText.isEmpty {
+                    Button(action: { searchText = "" }) {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(10)
+            .background(Color(.systemGray6))
+            .cornerRadius(10)
+            .padding(.horizontal)
+            .padding(.top, 8)
+
+            SearchableListContent(
+                items: items,
+                searchableText: searchableText,
+                displayText: displayText,
+                onSelect: onSelect,
+                searchText: $searchText
+            )
+        }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -51,12 +70,12 @@ private struct SearchableListContent<Item: Identifiable & Hashable>: View {
     var body: some View {
         List(filteredItems) { item in
             Button(action: {
-                dismissSearch()
                 onSelect(item)
             }) {
                 Text(displayText(item))
                     .foregroundStyle(.primary)
             }
         }
+        .listStyle(.plain)
     }
 }

@@ -14,12 +14,59 @@ final class SearchStore {
     var to: Station?
     var path: [Route] = []
     var catalog: StationsCatalog?
+    var carriers: [Carrier] = []
+    var isLoadingCarriers: Bool = false
+    var carriersError: AppError?
+    var filter: FilterState = FilterState()
+
+    var filteredCarriers: [Carrier] {
+        var result = carriers
+
+        if !filter.selectedTimeSlots.isEmpty {
+            let calendar = Calendar.current
+            result = result.filter { carrier in
+                let hour = calendar.component(.hour, from: carrier.departure)
+                return filter.selectedTimeSlots.contains { slot in
+                    slot.hourRange.contains(hour)
+                }
+            }
+        }
+
+        return result
+    }
 
     @ObservationIgnored
     private let dependencies: AppDependencies
 
+    @ObservationIgnored
+    private let dateFormatters: [DateFormatter] = {
+        let formats = [
+            "HH:mm:ss",
+            "yyyy-MM-dd HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ssZ",
+            "yyyy-MM-dd'T'HH:mm:ss",
+            "yyyy-MM-dd'T'HH:mm:ssXXXXX",
+        ]
+        return formats.map { format in
+            let f = DateFormatter()
+            f.locale = Locale(identifier: "en_US_POSIX")
+            f.dateFormat = format
+            return f
+        }
+    }()
+
     init(dependencies: AppDependencies) {
         self.dependencies = dependencies
+    }
+
+    private func parseDate(_ string: String?) -> Date? {
+        guard let string, !string.isEmpty else { return nil }
+        for formatter in dateFormatters {
+            if let date = formatter.date(from: string) {
+                return date
+            }
+        }
+        return nil
     }
 
     func setStation(_ station: Station, for direction: TripDirection) {
@@ -31,6 +78,8 @@ final class SearchStore {
         }
         Task { @MainActor in
             path.removeAll()
+            carriers = []
+            filter = FilterState()
         }
     }
 
@@ -47,6 +96,57 @@ final class SearchStore {
         } catch {
             catalog = nil
         }
+    }
+
+    func search() async {
+        guard let from, let to else { return }
+        carriers = []
+        isLoadingCarriers = true
+        carriersError = nil
+        do {
+            let response = try await dependencies.searchService
+                .getScheduleBetweenStations(
+                    from: from.id,
+                    to: to.id,
+                    transfers: filter.showWithTransfers
+                )
+            carriers = mapToCarriers(response)
+        } catch {
+            carriersError = ErrorMapper.map(error)
+            carriers = []
+        }
+        isLoadingCarriers = false
+    }
+
+    func applyFilter(_ newFilter: FilterState) async {
+        let needsRefetch = filter.showWithTransfers != newFilter.showWithTransfers
+        filter = newFilter
+        if needsRefetch {
+            await search()
+        }
+    }
+
+    private func mapToCarriers(_ response: Search) -> [Carrier] {
+        let segments: [Components.Schemas.Segment] = response.segments ?? []
+        let carriers: [Carrier] = segments.compactMap { segment -> Carrier? in
+            guard let uid = segment.thread?.uid, !uid.isEmpty else { return nil }
+            guard
+                let departure = parseDate(segment.departure),
+                let arrival = parseDate(segment.arrival)
+            else { return nil }
+
+            return Carrier(
+                id: uid,
+                title: segment.thread?.carrier?.title ?? "Без названия",
+                logoURL: (segment.thread?.carrier?.logo).flatMap { URL(string: $0) },
+                departure: departure,
+                arrival: arrival,
+                duration: TimeInterval(segment.duration ?? 0),
+                hasTransfers: segment.has_transfers ?? false
+            )
+        }
+
+        return carriers.sorted { $0.departure < $1.departure }
     }
 
     private func mapToCatalog(_ response: StationsList) -> StationsCatalog {

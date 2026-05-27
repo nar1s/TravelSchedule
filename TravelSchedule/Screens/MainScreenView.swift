@@ -40,6 +40,7 @@ struct MainScreenView: View {
 
                 Button("Найти") {
                     store.path.append(.carriers)
+                    Task { await store.search() }
                 }
                 .disabled(store.from == nil || store.to == nil)
                 .padding()
@@ -84,7 +85,7 @@ struct MainScreenView: View {
             }
 
         case .carriers:
-            Text("Carriers List")
+            CarriersListView()
         }
     }
 }
