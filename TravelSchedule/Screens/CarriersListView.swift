@@ -9,15 +9,12 @@ import SwiftUI
 
 struct CarriersListView: View {
     @Environment(SearchStore.self) private var store
-    @State private var showFilter = false
 
     var body: some View {
         ZStack {
             if store.isLoadingCarriers && store.carriers.isEmpty {
                 ProgressView()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if let error = store.carriersError {
-                errorView(for: error)
             } else if store.filteredCarriers.isEmpty {
                 emptyView
             } else {
@@ -29,7 +26,7 @@ struct CarriersListView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
-                    showFilter = true
+                    store.path.append(.filter)
                 } label: {
                     HStack(spacing: 4) {
                         Text("Уточнить")
@@ -42,9 +39,6 @@ struct CarriersListView: View {
                 }
                 .disabled(store.carriers.isEmpty)
             }
-        }
-        .sheet(isPresented: $showFilter) {
-            FilterView()
         }
         .task {
             guard !store.isLoadingCarriers, store.carriers.isEmpty else { return }
@@ -59,9 +53,6 @@ struct CarriersListView: View {
             CarrierRow(carrier: carrier)
         }
         .listStyle(.plain)
-        .refreshable {
-            await store.search()
-        }
     }
 
     // MARK: - Empty
@@ -72,7 +63,7 @@ struct CarriersListView: View {
                 .font(.system(size: 48))
                 .foregroundStyle(.secondary)
 
-            Text(store.carriers.isEmpty ? "Ничего не найдено" : "Нет рейсов по фильтру")
+            Text(store.carriers.isEmpty ? "Вариантов нет" : "Нет рейсов по фильтру")
                 .font(.title3)
                 .foregroundStyle(.secondary)
 
@@ -90,43 +81,6 @@ struct CarriersListView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-
-    // MARK: - Error
-
-    private func errorView(for error: AppError) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: errorIcon(for: error))
-                .font(.system(size: 48))
-                .foregroundStyle(.secondary)
-
-            Text(errorMessage(for: error))
-                .font(.title3)
-                .foregroundStyle(.secondary)
-
-            Button("Повторить") {
-                Task { await store.search() }
-            }
-            .buttonStyle(.bordered)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func errorIcon(for error: AppError) -> String {
-        switch error {
-        case .noInternet: "wifi.slash"
-        case .server: "exclamationmark.icloud"
-        case .decoding, .unknown: "questionmark"
-        }
-    }
-
-    private func errorMessage(for error: AppError) -> String {
-        switch error {
-        case .noInternet: "Нет интернета"
-        case .server: "Ошибка сервера"
-        case .decoding: "Ошибка данных"
-        case .unknown: "Неизвестная ошибка"
-        }
-    }
 }
 
 // MARK: - CarrierRow
@@ -135,40 +89,42 @@ struct CarrierRow: View {
     let carrier: Carrier
 
     var body: some View {
-        HStack(spacing: 12) {
-            logoView
-                .frame(width: 38, height: 38)
-                .cornerRadius(8)
+        NavigationLink(destination: CarrierView(carrierName: carrier.title)) {
+            HStack(spacing: 12) {
+                logoView
+                    .frame(width: 38, height: 38)
+                    .cornerRadius(8)
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(carrier.title)
-                    .font(.body)
-                    .fontWeight(.medium)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(carrier.title)
+                        .font(.body)
+                        .fontWeight(.medium)
 
-                HStack(spacing: 4) {
-                    Text(carrier.departure, style: .time)
-                    Image(systemName: "arrow.right")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text(carrier.arrival, style: .time)
+                    HStack(spacing: 4) {
+                        Text(carrier.departure, style: .time)
+                        Image(systemName: "arrow.right")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                        Text(carrier.arrival, style: .time)
+                    }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                    if carrier.hasTransfers {
+                        Text("С пересадкой")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    }
                 }
-                .font(.caption)
-                .foregroundStyle(.secondary)
 
-                if carrier.hasTransfers {
-                    Text("С пересадкой")
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                }
+                Spacer()
+
+                Text(durationText(from: carrier.duration))
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
-
-            Spacer()
-
-            Text(durationText(from: carrier.duration))
-                .font(.caption)
-                .foregroundStyle(.secondary)
+            .padding(.vertical, 6)
         }
-        .padding(.vertical, 6)
     }
 
     @ViewBuilder
@@ -215,54 +171,53 @@ struct FilterView: View {
     @State private var draft: FilterState = FilterState()
 
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Время отправления") {
-                    ForEach(TimeSlot.allCases) { slot in
-                        Toggle(isOn: Binding(
-                            get: { draft.selectedTimeSlots.contains(slot) },
-                            set: { isOn in
-                                if isOn {
-                                    draft.selectedTimeSlots.insert(slot)
-                                } else {
-                                    draft.selectedTimeSlots.remove(slot)
-                                }
+        Form {
+            Section("Время отправления") {
+                ForEach(TimeSlot.allCases) { slot in
+                    Toggle(isOn: Binding(
+                        get: { draft.selectedTimeSlots.contains(slot) },
+                        set: { isOn in
+                            if isOn {
+                                draft.selectedTimeSlots.insert(slot)
+                            } else {
+                                draft.selectedTimeSlots.remove(slot)
                             }
-                        )) {
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(slot.rawValue)
-                                Text(slot.subtitle)
-                                    .font(.caption)
-                                    .foregroundStyle(.secondary)
-                            }
+                        }
+                    )) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(slot.rawValue)
+                            Text(slot.subtitle)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }
+            }
 
-                Section("Пересадки") {
-                    Toggle("Показывать рейсы с пересадками", isOn: $draft.showWithTransfers)
+            Section("Пересадки") {
+                Toggle("Показывать рейсы с пересадками", isOn: $draft.showWithTransfers)
+            }
+
+            Section {
+                Button("Сбросить") {
+                    draft = FilterState()
+                }
+                .disabled(!draft.isActive)
+            }
+        }
+        .navigationTitle("Уточнить время")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button("Применить") {
+                    let newFilter = draft
+                    dismiss()
+                    Task { await store.applyFilter(newFilter) }
                 }
             }
-            .navigationTitle("Уточнить время")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Сбросить") {
-                        draft = FilterState()
-                    }
-                    .disabled(!draft.isActive)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Применить") {
-                        let newFilter = draft
-                        dismiss()
-                        Task { await store.applyFilter(newFilter) }
-                    }
-                }
-            }
-            .onAppear {
-                draft = store.filter
-            }
+        }
+        .onAppear {
+            draft = store.filter
         }
     }
 }

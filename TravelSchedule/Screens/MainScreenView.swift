@@ -38,12 +38,13 @@ struct MainScreenView: View {
                 }
                 .padding()
 
-                Button("Найти") {
-                    store.path.append(.carriers)
-                    Task { await store.search() }
+                if store.from != nil && store.to != nil {
+                    Button("Найти") {
+                        store.path.append(.carriers)
+                        Task { await store.search() }
+                    }
+                    .padding()
                 }
-                .disabled(store.from == nil || store.to == nil)
-                .padding()
             }
             .navigationDestination(for: Route.self) { route in
                 destinationView(for: route)
@@ -55,37 +56,47 @@ struct MainScreenView: View {
     private func destinationView(for route: Route) -> some View {
         switch route {
         case .cityList(let direction):
-            if let catalog = store.catalog {
-                SearchableListView(
-                    title: direction == .from ? "Откуда" : "Куда",
-                    items: catalog.cities,
-                    searchableText: { $0.title },
-                    displayText: { $0.title },
-                    onSelect: { city in
-                        store.path.append(.stationList(direction: direction, city: city))
-                    }
-                )
-            } else {
-                Text("Загрузка...")
+            Group {
+                if let catalog = store.catalog {
+                    SearchableListView(
+                        title: direction == .from ? "Откуда" : "Куда",
+                        items: catalog.cities,
+                        searchableText: { $0.title },
+                        displayText: { $0.title },
+                        onSelect: { city in
+                            store.path.append(.stationList(direction: direction, city: city))
+                        }
+                    )
+                } else {
+                    Text("Загрузка...")
+                }
             }
+            .toolbar(.hidden, for: .tabBar)
 
         case .stationList(let direction, let city):
-            if let catalog = store.catalog {
-                SearchableListView(
-                    title: city.title,
-                    items: catalog.stations(in: city),
-                    searchableText: { $0.title },
-                    displayText: { $0.title },
-                    onSelect: { station in
-                        store.setStation(station, for: direction)
-                    }
-                )
-            } else {
-                Text("Загрузка...")
+            Group {
+                if let catalog = store.catalog {
+                    SearchableListView(
+                        title: city.title,
+                        items: catalog.stations(in: city),
+                        searchableText: { $0.title },
+                        displayText: { $0.title },
+                        onSelect: { station in
+                            store.setStation(station, for: direction)
+                        }
+                    )
+                } else {
+                    Text("Загрузка...")
+                }
             }
+            .toolbar(.hidden, for: .tabBar)
 
         case .carriers:
             CarriersListView()
+
+        case .filter:
+            FilterView()
+                .toolbar(.hidden, for: .tabBar)
         }
     }
 }

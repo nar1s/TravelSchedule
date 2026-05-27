@@ -11,8 +11,6 @@ import OpenAPIRuntime
 enum AppError: Error, Equatable {
     case noInternet
     case server
-    case decoding
-    case unknown
 }
 
 enum ErrorMapper {
@@ -40,10 +38,6 @@ enum ErrorMapper {
             }
         }
 
-        if error is DecodingError {
-            return .decoding
-        }
-
-        return .unknown
+        return .server
     }
 }

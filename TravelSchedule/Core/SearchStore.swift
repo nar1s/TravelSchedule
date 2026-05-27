@@ -100,6 +100,14 @@ final class SearchStore {
 
     func search() async {
         guard let from, let to else { return }
+
+        guard dependencies.connectivityMonitor.isOnline else {
+            carriersError = .noInternet
+            isLoadingCarriers = false
+            carriers = []
+            return
+        }
+
         carriers = []
         isLoadingCarriers = true
         carriersError = nil

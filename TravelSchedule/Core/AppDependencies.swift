@@ -19,6 +19,7 @@ final class AppDependencies {
     let searchService: any SearchServiceProtocol
     let stationsListService: any StationsListServiceProtocol
     let threadService: any ThreadServiceProtocol
+    let connectivityMonitor: ConnectivityMonitor
 
     init(apikey: String) throws {
         let client = try Client(
@@ -35,5 +36,7 @@ final class AppDependencies {
         self.searchService = SearchService(client: client, apikey: apikey)
         self.stationsListService = StationsListService(client: client, apikey: apikey)
         self.threadService = ThreadService(client: client, apikey: apikey)
+
+        self.connectivityMonitor = ConnectivityMonitor()
     }
 }

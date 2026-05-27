@@ -14,4 +14,5 @@ enum Route: Hashable {
     case cityList(direction: TripDirection)
     case stationList(direction: TripDirection, city: City)
     case carriers
+    case filter
 }
