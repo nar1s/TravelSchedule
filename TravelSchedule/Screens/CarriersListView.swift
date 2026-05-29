@@ -47,10 +47,8 @@ struct CarriersListView: View {
                 .frame(maxWidth: .infinity)
                 .frame(height: 60)
                 .background(Color(.ypBlue))
-                .cornerRadius(16)
-                .padding(.horizontal, 16)
-                .padding(.bottom, 8)
-            }
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding([.horizontal, .top], 16)            }
             .disabled(store.carriers.isEmpty)
         }
         .task {

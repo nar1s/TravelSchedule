@@ -70,7 +70,7 @@ struct CarrierCardView: View {
         }
         .padding(14)
         .background(Color(.ypLightGray))
-        .cornerRadius(24)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
         .padding(.horizontal, 16)
     }
 
@@ -94,7 +94,7 @@ struct CarrierCardView: View {
         RoundedRectangle(cornerRadius: 12)
             .fill(Color(.systemGray5))
             .overlay {
-                Image(systemName: "tram.fill")
+                Image(systemName: SFSymbol.tramFill)
                     .foregroundStyle(.secondary)
             }
     }

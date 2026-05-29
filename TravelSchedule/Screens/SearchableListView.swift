@@ -41,7 +41,7 @@ struct SearchableListView<Item: Identifiable & Hashable>: View {
     var body: some View {
         VStack(spacing: 0) {
             HStack {
-                Image(systemName: "magnifyingglass")
+                Image(systemName: SFSymbol.magnifyingGlass)
                     .foregroundStyle(Color(.ypGray))
 
                 TextField(
@@ -52,16 +52,16 @@ struct SearchableListView<Item: Identifiable & Hashable>: View {
                 .textFieldStyle(.plain)
                 .foregroundStyle(.primary)
 
-                if !searchText.isEmpty {
-                    Button(action: { searchText = "" }) {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(Color(.ypGray))
-                    }
+                Button(action: { searchText = "" }) {
+                    Image(systemName: SFSymbol.xmarkCircleFill)
+                        .foregroundStyle(Color(.ypGray))
                 }
+                .opacity(searchText.isEmpty ? 0 : 1)
+                .disabled(searchText.isEmpty)
             }
             .padding(10)
             .background(searchFieldBackground)
-            .cornerRadius(10)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
             .padding(.horizontal)
             .padding(.top, 8)
 
@@ -91,10 +91,7 @@ private struct SearchableListContent<Item: Identifiable & Hashable>: View {
     @Environment(\.dismissSearch) private var dismissSearch
 
     private var filteredItems: [Item] {
-        if searchText.isEmpty {
-            return items
-        }
-        return items.filter { item in
+        searchText.isEmpty ? items : items.filter { item in
             searchableText(item).localizedCaseInsensitiveContains(searchText)
         }
     }
@@ -118,7 +115,7 @@ private struct SearchableListContent<Item: Identifiable & Hashable>: View {
                             .font(.system(size: 17, weight: .regular))
                             .foregroundStyle(Color(.ypBlack))
                         Spacer()
-                        Image(systemName: "chevron.right")
+                        Image(systemName: SFSymbol.chevronRight)
                             .font(.system(size: 18, weight: .semibold))
                             .foregroundStyle(Color(.ypBlack))
                     }

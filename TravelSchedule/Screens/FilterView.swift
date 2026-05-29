@@ -59,7 +59,7 @@ struct FilterView: View {
                     .frame(maxWidth: .infinity)
                     .frame(height: 60)
                     .background(Color(.ypBlue))
-                    .cornerRadius(16)
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
                     .padding(.horizontal, 16)
                     .padding(.bottom, 8)
             }
@@ -97,9 +97,10 @@ struct FilterView: View {
                             .fill(isSelected ? Color(.ypBlack) : Color.clear)
                     )
                     .overlay(
-                        Image(systemName: "checkmark")
+                        Image(systemName: SFSymbol.checkmark)
                             .font(.system(size: 14, weight: .bold))
-                            .foregroundColor(isSelected ? Color(.ypWhite) : .clear)
+                            .foregroundStyle(.ypWhiteUniversal)
+                            .opacity(isSelected ? 1 : 0)
                     )
             }
             .padding(.vertical, 12)

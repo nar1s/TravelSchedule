@@ -281,8 +281,13 @@ final class SearchStore {
 
 extension SearchStore {
     static var preview: SearchStore {
-        let dependencies = try! AppDependencies(apikey: Constants.apiKey)
-        let store = SearchStore(dependencies: dependencies)
+        let store: SearchStore = {
+            guard let dependencies = try? AppDependencies(apikey: Constants.apiKey) else {
+                fatalError("Failed to initialize AppDependencies for preview")
+            }
+            return SearchStore(dependencies: dependencies)
+        }()
+        
         store.catalog = StationsCatalog(
             cities: [
                 City(id: "c213", title: "Москва"),

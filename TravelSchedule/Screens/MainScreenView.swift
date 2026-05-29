@@ -33,7 +33,7 @@ struct MainScreenView: View {
                                 .font(.system(size: 17, weight: .bold))
                                 .foregroundStyle(Color(.ypWhiteUniversal))
                                 .background(Color(.ypBlue))
-                                .cornerRadius(16)
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
                         }
                     }
 
@@ -62,7 +62,7 @@ struct MainScreenView: View {
                 )
             }
             .background(Color(.ypWhiteUniversal))
-            .cornerRadius(20)
+            .clipShape(RoundedRectangle(cornerRadius: 20))
 
             Button(action: store.swap) {
                 Circle()
@@ -80,7 +80,7 @@ struct MainScreenView: View {
         }
         .padding(16)
         .background(Color(.ypBlue))
-        .cornerRadius(20)
+        .clipShape(RoundedRectangle(cornerRadius: 20))
     }
 
     @ViewBuilder
@@ -154,7 +154,7 @@ struct MainScreenView: View {
     }
 }
 
-struct StationField: View {
+private struct StationField: View {
     let title: String
     let stationTitle: String?
     let action: () -> Void

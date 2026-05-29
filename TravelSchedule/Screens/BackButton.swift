@@ -12,7 +12,7 @@ struct BackButton: View {
 
     var body: some View {
         Button(action: { dismiss() }) {
-            Image(systemName: "chevron.left")
+            Image(systemName: SFSymbol.chevronLeft)
                 .font(.system(size: 17, weight: .semibold))
                 .foregroundStyle(Color(.ypBlack))
         }
