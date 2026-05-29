@@ -14,15 +14,7 @@ protocol ScheduleServiceProtocol {
     func getStationSchedule(station: String) async throws -> Schedule
 }
 
-final class ScheduleService: ScheduleServiceProtocol {
-    private let client: Client
-    private let apikey: String
-    
-    init(client: Client, apikey: String) {
-        self.client = client
-        self.apikey = apikey
-    }
-    
+final class ScheduleService: BaseService, ScheduleServiceProtocol {
     func getStationSchedule(station: String) async throws -> Schedule {
         let response = try await client.getStationSchedule(query: .init(
             apikey: apikey,

@@ -1,47 +1,37 @@
 //
-//  ContentView.swift
+//  APITestRunner.swift
 //  TravelSchedule
 //
-//  Created by Павел Кузнецов on 02.04.2026.
+//  Created by Павел Кузнецов on 25.05.2026.
 //
 
-import SwiftUI
+import Foundation
+import OpenAPIRuntime
 import OpenAPIURLSession
 
-struct ContentView: View {
-    var body: some View {
-        VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
-        }
-        .padding()
-        .onAppear {
-            runAllServiceTests()
-        }
-    }
+final class APITestRunner {
+    private let client: Client
+    private let apikey: String
 
-    private func makeClient() throws -> Client {
-        try Client(
+    init(apikey: String) throws {
+        self.client = try Client(
             serverURL: Servers.Server1.url(),
             transport: URLSessionTransport()
         )
+        self.apikey = apikey
     }
 
-    private func runAllServiceTests() {
-        Task {
-            print("===== API TEST SUITE START =====")
-            await testFetchStations()
-            await testFetchCarrierInfo()
-            await testFetchCopyright()
-            await testFetchNearestCity()
-            let threadUID = await testFetchStationSchedule()
-            await testFetchSearchBetweenStations()
-            await testFetchStationsList()
-            await testFetchThreadRoute(uid: threadUID)
-            print("===== API TEST SUITE END =====")
-        }
+    func runAll() async {
+        print("===== API TEST SUITE START =====")
+        await testFetchStations()
+        await testFetchCarrierInfo()
+        await testFetchCopyright()
+        await testFetchNearestCity()
+        let threadUID = await testFetchStationSchedule()
+        await testFetchSearchBetweenStations()
+        await testFetchStationsList()
+        await testFetchThreadRoute(uid: threadUID)
+        print("===== API TEST SUITE END =====")
     }
 
     private func logStart(_ testName: String) {
@@ -71,14 +61,14 @@ struct ContentView: View {
         return "\(prefix)... [truncated]"
     }
 
-    func testFetchStations() async {
+    private func testFetchStations() async {
         let testName = "NearestStationsService.getNearestStations"
         logStart(testName)
 
         do {
             let service = NearestStationsService(
-                client: try makeClient(),
-                apikey: Constants.apiKey
+                client: client,
+                apikey: apikey
             )
 
             let stations = try await service.getNearestStations(
@@ -92,14 +82,14 @@ struct ContentView: View {
         }
     }
 
-    func testFetchCarrierInfo() async {
+    private func testFetchCarrierInfo() async {
         let testName = "CarrierService.getCarrierInfo"
         logStart(testName)
 
         do {
             let service = CarrierService(
-                client: try makeClient(),
-                apikey: Constants.apiKey
+                client: client,
+                apikey: apikey
             )
 
             let carrier = try await service.getCarrierInfo(code: "680")
@@ -109,14 +99,14 @@ struct ContentView: View {
         }
     }
 
-    func testFetchCopyright() async {
+    private func testFetchCopyright() async {
         let testName = "CopyrightService.getCopyright"
         logStart(testName)
 
         do {
             let service = CopyrightService(
-                client: try makeClient(),
-                apikey: Constants.apiKey
+                client: client,
+                apikey: apikey
             )
 
             let copyright = try await service.getCopyright(format: "json")
@@ -126,14 +116,14 @@ struct ContentView: View {
         }
     }
 
-    func testFetchNearestCity() async {
+    private func testFetchNearestCity() async {
         let testName = "NearestCityService.getNearestCity"
         logStart(testName)
 
         do {
             let service = NearestCityService(
-                client: try makeClient(),
-                apikey: Constants.apiKey
+                client: client,
+                apikey: apikey
             )
 
             let city = try await service.getNearestCity(
@@ -146,14 +136,14 @@ struct ContentView: View {
         }
     }
 
-    func testFetchStationSchedule() async -> String? {
+    private func testFetchStationSchedule() async -> String? {
         let testName = "ScheduleService.getStationSchedule"
         logStart(testName)
 
         do {
             let service = ScheduleService(
-                client: try makeClient(),
-                apikey: Constants.apiKey
+                client: client,
+                apikey: apikey
             )
 
             let schedule = try await service.getStationSchedule(station: "s9600213")
@@ -165,19 +155,21 @@ struct ContentView: View {
         }
     }
 
-    func testFetchSearchBetweenStations() async {
-        let testName = "SearchService.getSchedualBetweenStations"
+    private func testFetchSearchBetweenStations() async {
+        let testName = "SearchService.getScheduleBetweenStations"
         logStart(testName)
 
         do {
             let service = SearchService(
-                client: try makeClient(),
-                apikey: Constants.apiKey
+                client: client,
+                apikey: apikey
             )
 
-            let search = try await service.getSchedualBetweenStations(
+            let search = try await service.getScheduleBetweenStations(
                 from: "c213",
-                to: "c20735"
+                to: "c20735",
+                date: nil,
+                transfers: true
             )
             logSuccess(testName, result: search)
         } catch {
@@ -185,14 +177,14 @@ struct ContentView: View {
         }
     }
 
-    func testFetchStationsList() async {
+    private func testFetchStationsList() async {
         let testName = "StationsListService.getAllStations"
         logStart(testName)
 
         do {
             let service = StationsListService(
-                client: try makeClient(),
-                apikey: Constants.apiKey
+                client: client,
+                apikey: apikey
             )
 
             let stationsList = try await service.getAllStations()
@@ -202,7 +194,7 @@ struct ContentView: View {
         }
     }
 
-    func testFetchThreadRoute(uid: String?) async {
+    private func testFetchThreadRoute(uid: String?) async {
         let testName = "ThreadService.getRouteStations"
         logStart(testName)
 
@@ -213,8 +205,8 @@ struct ContentView: View {
 
         do {
             let service = ThreadService(
-                client: try makeClient(),
-                apikey: Constants.apiKey
+                client: client,
+                apikey: apikey
             )
 
             let thread = try await service.getRouteStations(uid: uid)
@@ -223,8 +215,4 @@ struct ContentView: View {
             logFailure(testName, error: error)
         }
     }
-}
-
-#Preview {
-    ContentView()
 }
