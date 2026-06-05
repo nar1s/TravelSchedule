@@ -9,82 +9,95 @@ import SwiftUI
 
 struct MainScreenView: View {
     @Environment(SearchStore.self) private var store
-
+    @State private var viewModel: MainScreenViewModel?
+    
     var body: some View {
-        @Bindable var bindableStore = store
-
-        NavigationStack(path: $bindableStore.path) {
+        NavigationStack(path: Binding(
+            get: { viewModel?.path ?? [] },
+            set: { viewModel?.path = $0 }
+        )) {
+            
             ZStack {
                 Color(.ypWhite)
                     .ignoresSafeArea()
-
-                VStack(spacing: 44) {
-                    StoriesBar()
-                        .padding(.horizontal, 16)
-                    
-                    searchCard
-                        .padding(.horizontal, 16)
-
-                    if store.from != nil && store.to != nil {
-                        Button {
-                            store.path.append(.carriers)
-                            Task { await store.search() }
-                        } label: {
-                            Text("Найти")
-                                .frame(width: 150, height: 60)
-                                .font(.system(size: 17, weight: .bold))
-                                .foregroundStyle(Color(.ypWhiteUniversal))
-                                .background(Color(.ypBlue))
-                                .clipShape(RoundedRectangle(cornerRadius: 16))
+                
+                if let viewModel {
+                    VStack(spacing: 44) {
+                        StoriesBar()
+                            .padding(.horizontal, 16)
+                        
+                        searchCard
+                            .padding(.horizontal, 16)
+                        
+                        if viewModel.canSearch {
+                            Button {
+                                viewModel.search()
+                            } label: {
+                                Text("Найти")
+                                    .frame(width: 150, height: 60)
+                                    .font(.system(size: 17, weight: .bold))
+                                    .foregroundStyle(Color(.ypWhiteUniversal))
+                                    .background(Color(.ypBlue))
+                                    .clipShape(RoundedRectangle(cornerRadius: 16))
+                            }
                         }
+                        
+                        Spacer()
                     }
-
-                    Spacer()
                 }
             }
             .navigationDestination(for: Route.self) { route in
                 destinationView(for: route)
             }
         }
-    }
-
-    private var searchCard: some View {
-        HStack(spacing: 16) {
-            VStack(spacing: 0) {
-                StationField(
-                    title: "Откуда",
-                    stationTitle: store.from?.title,
-                    action: { store.path.append(.cityList(direction: .from)) }
-                )
-
-                StationField(
-                    title: "Куда",
-                    stationTitle: store.to?.title,
-                    action: { store.path.append(.cityList(direction: .to)) }
-                )
-            }
-            .background(Color(.ypWhiteUniversal))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-
-            Button(action: store.swap) {
-                Circle()
-                    .fill(Color(.ypWhiteUniversal))
-                    .frame(width: 36, height: 36)
-                    .overlay {
-                        Image(.switch)
-                            .resizable()
-                            .renderingMode(.template)
-                            .scaledToFit()
-                            .foregroundStyle(Color(.ypBlue))
-                            .frame(width: 20, height: 20)
-                    }
+        .onAppear {
+            if viewModel == nil {
+                viewModel = MainScreenViewModel(store: store)
             }
         }
-        .padding(16)
-        .background(Color(.ypBlue))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
     }
-
+    
+    private var searchCard: some View {
+        guard let viewModel else { return AnyView(EmptyView()) }
+        
+        return AnyView(
+            HStack(spacing: 16) {
+                VStack(spacing: 0) {
+                    StationField(
+                        title: "Откуда",
+                        stationTitle: viewModel.fromTitle,
+                        action: { viewModel.selectFromCity() }
+                    )
+                    
+                    StationField(
+                        title: "Куда",
+                        stationTitle: viewModel.toTitle,
+                        action: { viewModel.selectToCity() }
+                    )
+                }
+                .background(Color(.ypWhiteUniversal))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+                
+                Button(action: { viewModel.swap() }) {
+                    Circle()
+                        .fill(Color(.ypWhiteUniversal))
+                        .frame(width: 36, height: 36)
+                        .overlay {
+                            Image(.switch)
+                                .resizable()
+                                .renderingMode(.template)
+                                .scaledToFit()
+                                .foregroundStyle(Color(.ypBlue))
+                                .frame(width: 20, height: 20)
+                        }
+                }
+            }
+                .padding(16)
+                .background(Color(.ypBlue))
+                .clipShape(RoundedRectangle(cornerRadius: 20))
+        )
+    }
+    
     @ViewBuilder
     private func destinationView(for route: Route) -> some View {
         switch route {
@@ -110,7 +123,7 @@ struct MainScreenView: View {
                     BackButton()
                 }
             }
-
+            
         case .stationList(let direction, let city):
             Group {
                 if let catalog = store.catalog {
@@ -133,7 +146,7 @@ struct MainScreenView: View {
                     BackButton()
                 }
             }
-
+            
         case .carriers:
             CarriersListView()
                 .navigationBarBackButtonHidden(true)
@@ -142,7 +155,7 @@ struct MainScreenView: View {
                         BackButton()
                     }
                 }
-
+            
         case .filter:
             FilterView()
                 .toolbar(.hidden, for: .tabBar)
@@ -160,7 +173,7 @@ private struct StationField: View {
     let title: String
     let stationTitle: String?
     let action: () -> Void
-
+    
     var body: some View {
         Button(action: action) {
             HStack {
