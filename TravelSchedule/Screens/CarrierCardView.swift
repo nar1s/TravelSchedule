@@ -117,6 +117,7 @@ struct CarrierCardView: View {
         departure: Date(),
         arrival: Date().addingTimeInterval(7200),
         duration: 7200,
-        hasTransfers: false
+        hasTransfers: false,
+        carrierCode: "12"
     ))
 }

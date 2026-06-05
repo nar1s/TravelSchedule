@@ -7,6 +7,7 @@
 
 import Observation
 import Foundation
+import SwiftUI
 
 @Observable
 final class SearchStore {
@@ -182,6 +183,19 @@ final class SearchStore {
         }
         isLoadingCarriers = false
     }
+    
+    func loadCarrierDetails(id: String) async throws -> CarrierDetails {
+        let response = try await dependencies.carrierService.getCarrierInfo(code: id)
+        
+        guard let carrier = response.carrier else {
+            return CarrierDetails(email: "", phone: "")
+        }
+
+        let email = carrier.email ?? ""
+        let phone = carrier.phone ?? ""
+        
+        return CarrierDetails(email: email, phone: phone)
+    }
 
     func applyFilter(_ newFilter: FilterState) async {
         let needsRefetch = filter.showWithTransfers != newFilter.showWithTransfers
@@ -217,7 +231,8 @@ final class SearchStore {
                 departure: departure,
                 arrival: arrival,
                 duration: TimeInterval(segment.duration ?? 0),
-                hasTransfers: segment.has_transfers ?? false
+                hasTransfers: segment.has_transfers ?? false,
+                carrierCode: segment.thread?.carrier?.code.map { String($0) }
             )
         }
 

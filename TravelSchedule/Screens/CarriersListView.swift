@@ -64,7 +64,7 @@ struct CarriersListView: View {
         ScrollView {
             LazyVStack(spacing: 8) {
                 ForEach(store.filteredCarriers) { carrier in
-                    NavigationLink(destination: CarrierView(carrierName: carrier.title)) {
+                    NavigationLink(destination: CarrierView(carrier: carrier)) {
                         CarrierCardView(carrier: carrier)
                     }
                     .buttonStyle(.plain)

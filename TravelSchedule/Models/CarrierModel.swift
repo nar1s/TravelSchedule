@@ -15,4 +15,5 @@ struct Carrier: Identifiable, Hashable {
     let arrival: Date
     let duration: TimeInterval
     let hasTransfers: Bool
+    let carrierCode: String?
 }
