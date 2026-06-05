@@ -18,10 +18,12 @@ struct MainScreenView: View {
                 Color(.ypWhite)
                     .ignoresSafeArea()
 
-                VStack(spacing: 16) {
+                VStack(spacing: 44) {
+                    StoriesBar()
+                        .padding(.horizontal, 16)
+                    
                     searchCard
                         .padding(.horizontal, 16)
-                        .padding(.top, 252)
 
                     if store.from != nil && store.to != nil {
                         Button {
