@@ -16,6 +16,7 @@ struct UserAgreementView: View {
             .ignoresSafeArea(edges: .bottom)
             .navigationTitle("Пользовательское соглашение")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .tabBar)
     }
 }
 
