@@ -89,7 +89,7 @@ struct StoriesViewer: View {
                         viewModel.stop()
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: SFSymbol.xmark)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color(.ypWhiteUniversal))
                             .frame(width: 30, height: 30)

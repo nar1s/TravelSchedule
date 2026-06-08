@@ -14,7 +14,7 @@ struct Story: Identifiable, Hashable, Sendable {
     let description: String
 }
 
-struct StoryGroup: Identifiable, Hashable {
+struct StoryGroup: Identifiable, Hashable, Sendable {
     let id: UUID = UUID()
     let previewImageName: String
     let stories: [Story]

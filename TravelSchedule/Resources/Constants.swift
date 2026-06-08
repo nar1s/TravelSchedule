@@ -18,4 +18,5 @@ enum SFSymbol {
     static let magnifyingGlass = "magnifyingglass"
     static let checkmark = "checkmark"
     static let xmarkCircleFill = "xmark.circle.fill"
+    static let xmark = "xmark"
 }
