@@ -8,7 +8,7 @@
 import Foundation
 import OpenAPIRuntime
 
-enum AppError: Error, Equatable {
+enum AppError: Error, Equatable, Sendable {
     case noInternet
     case server
 }

@@ -10,7 +10,7 @@ import OpenAPIURLSession
 
 typealias CarrierResponse = Components.Schemas.CarrierResponse
 
-protocol CarrierServiceProtocol {
+protocol CarrierServiceProtocol: Sendable {
     func getCarrierInfo(code: String) async throws -> CarrierResponse
 }
 
@@ -23,3 +23,17 @@ final class CarrierService: BaseService, CarrierServiceProtocol {
         return try response.ok.body.json
     }
 }
+// MARK: - CarrierResponse → CarrierDetails
+
+extension CarrierResponse {
+    func toCarrierDetails() -> CarrierDetails {
+        guard let carrier = carrier else {
+            return CarrierDetails(email: "", phone: "")
+        }
+        return CarrierDetails(
+            email: carrier.email ?? "",
+            phone: carrier.phone ?? ""
+        )
+    }
+}
+

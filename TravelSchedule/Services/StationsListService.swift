@@ -11,7 +11,7 @@ import Foundation
 
 typealias StationsList = Components.Schemas.AllStationsResponse
 
-protocol StationsListServiceProtocol {
+protocol StationsListServiceProtocol: Sendable {
     func getAllStations() async throws -> StationsList
 }
 

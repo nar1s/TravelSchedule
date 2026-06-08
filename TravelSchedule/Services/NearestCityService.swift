@@ -10,7 +10,7 @@ import OpenAPIURLSession
 
 typealias NearestCity = Components.Schemas.NearestCityResponse
 
-protocol NearestCityServiceProtocol {
+protocol NearestCityServiceProtocol: Sendable {
     func getNearestCity(lat: Double, lng: Double) async throws -> NearestCity
 }
 

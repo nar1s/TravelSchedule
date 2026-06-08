@@ -11,21 +11,22 @@ struct CarrierView: View {
     let carrier: Carrier
     
     @Environment(SearchStore.self) private var store
-    @State private var carrierDetails: CarrierDetails?
-    @State private var isLoading = true
-    @State private var hasError = false
+    @Environment(AppDependencies.self) private var dependencies
+    @State private var viewModel: CarrierViewModel?
     
     var body: some View {
         ZStack {
             Color(.ypWhite)
                 .ignoresSafeArea()
             
-            if isLoading {
-                ProgressView()
-            } else if hasError {
-                errorView
-            } else {
-                content
+            if let viewModel {
+                if viewModel.isLoading {
+                    ProgressView()
+                } else if viewModel.hasError {
+                    errorView
+                } else {
+                    content(details: viewModel.details)
+                }
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -35,7 +36,13 @@ struct CarrierView: View {
             customNavigationBar
         }
         .task {
-            await loadCarrierDetails()
+            if viewModel == nil {
+                viewModel = CarrierViewModel(
+                    carrier: carrier,
+                    networkClient: dependencies.networkClient
+                )
+            }
+            await viewModel?.load()
         }
     }
     
@@ -57,7 +64,7 @@ struct CarrierView: View {
     
     // MARK: - Private Views
     
-    private var content: some View {
+    private func content(details: CarrierDetails?) -> some View {
         ScrollView {
             VStack(spacing: 24) {
                 logoView
@@ -69,7 +76,7 @@ struct CarrierView: View {
                     .foregroundStyle(Color(.ypBlack))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
-                contactInfoView
+                contactInfoView(details: details)
             }
             .padding(.horizontal, 16)
         }
@@ -119,8 +126,8 @@ struct CarrierView: View {
     }
     
     @ViewBuilder
-    private var contactInfoView: some View {
-        if let details = carrierDetails, details.hasAnyInfo {
+    private func contactInfoView(details: CarrierDetails?) -> some View {
+        if let details, details.hasAnyInfo {
             VStack(alignment: .leading, spacing: 16) {
                 if !details.email.isEmpty {
                     contactRow(title: "E-mail", value: details.email)
@@ -145,30 +152,6 @@ struct CarrierView: View {
                 .foregroundStyle(Color(.ypBlue))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-    
-    private func loadCarrierDetails() async {
-        defer { isLoading = false }
-        
-        do {
-            let response = try await store.loadCarrierDetails(id: carrier.carrierCode ?? "")
-            carrierDetails = response
-            hasError = false
-        } catch {
-            carrierDetails = nil
-            hasError = true
-        }
-    }
-}
-
-// MARK: - CarrierDetails
-
-struct CarrierDetails: Equatable {
-    let email: String
-    let phone: String
-    
-    var hasAnyInfo: Bool {
-        !email.isEmpty || !phone.isEmpty
     }
 }
 

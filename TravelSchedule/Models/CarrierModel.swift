@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct Carrier: Identifiable, Hashable {
+struct Carrier: Identifiable, Hashable, Sendable {
     let id: String
     let title: String
     let logoURL: URL?
@@ -17,3 +17,4 @@ struct Carrier: Identifiable, Hashable {
     let hasTransfers: Bool
     let carrierCode: String?
 }
+

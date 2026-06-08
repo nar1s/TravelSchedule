@@ -50,7 +50,7 @@ struct MainScreenView: View {
                 destinationView(for: route)
             }
         }
-        .onAppear {
+        .task {
             if viewModel == nil {
                 viewModel = MainScreenViewModel(store: store)
             }

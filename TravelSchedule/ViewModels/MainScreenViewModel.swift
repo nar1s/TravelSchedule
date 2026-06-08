@@ -9,6 +9,7 @@ import Foundation
 import SwiftUI
 import Observation
 
+@MainActor
 @Observable
 final class MainScreenViewModel {
     private let store: SearchStore

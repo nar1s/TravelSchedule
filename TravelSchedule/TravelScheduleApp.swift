@@ -11,13 +11,15 @@ import SwiftUI
 struct TravelScheduleApp: App {
     @State private var store: SearchStore?
     @State private var connectivityMonitor: ConnectivityMonitor?
+    @State private var dependencies: AppDependencies?
 
     var body: some Scene {
         WindowGroup {
-            if let store, let monitor = connectivityMonitor {
+            if let store, let dependencies, let monitor = connectivityMonitor {
                 RootView()
-                    .environment(store)
                     .environment(monitor)
+                    .environment(dependencies)
+                    .environment(store)
             } else {
                 Text("Не удалось инициализировать приложение")
             }

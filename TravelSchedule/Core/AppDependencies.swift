@@ -7,8 +7,10 @@
 
 import OpenAPIRuntime
 import OpenAPIURLSession
+import Observation
 
-final class AppDependencies {
+@Observable
+final class AppDependencies: Sendable {
     let client: Client
 
     let carrierService: any CarrierServiceProtocol
@@ -21,6 +23,8 @@ final class AppDependencies {
     let threadService: any ThreadServiceProtocol
     let connectivityMonitor: ConnectivityMonitor
 
+    let networkClient: any NetworkClientProtocol
+
     init(apikey: String) throws {
         let client = try Client(
             serverURL: Servers.Server1.url(),
@@ -28,15 +32,31 @@ final class AppDependencies {
         )
         self.client = client
 
-        self.carrierService = CarrierService(client: client, apikey: apikey)
-        self.copyrightService = CopyrightService(client: client, apikey: apikey)
-        self.nearestCityService = NearestCityService(client: client, apikey: apikey)
-        self.nearestStationsService = NearestStationsService(client: client, apikey: apikey)
-        self.scheduleService = ScheduleService(client: client, apikey: apikey)
-        self.searchService = SearchService(client: client, apikey: apikey)
-        self.stationsListService = StationsListService(client: client, apikey: apikey)
-        self.threadService = ThreadService(client: client, apikey: apikey)
+        let carrierService = CarrierService(client: client, apikey: apikey)
+        let copyrightService = CopyrightService(client: client, apikey: apikey)
+        let nearestCityService = NearestCityService(client: client, apikey: apikey)
+        let nearestStationsService = NearestStationsService(client: client, apikey: apikey)
+        let scheduleService = ScheduleService(client: client, apikey: apikey)
+        let searchService = SearchService(client: client, apikey: apikey)
+        let stationsListService = StationsListService(client: client, apikey: apikey)
+        let threadService = ThreadService(client: client, apikey: apikey)
+        let connectivityMonitor = ConnectivityMonitor()
 
-        self.connectivityMonitor = ConnectivityMonitor()
+        self.carrierService = carrierService
+        self.copyrightService = copyrightService
+        self.nearestCityService = nearestCityService
+        self.nearestStationsService = nearestStationsService
+        self.scheduleService = scheduleService
+        self.searchService = searchService
+        self.stationsListService = stationsListService
+        self.threadService = threadService
+        self.connectivityMonitor = connectivityMonitor
+
+        self.networkClient = NetworkClient(
+            stationsListService: stationsListService,
+            searchService: searchService,
+            carrierService: carrierService,
+            connectivityMonitor: connectivityMonitor
+        )
     }
 }
