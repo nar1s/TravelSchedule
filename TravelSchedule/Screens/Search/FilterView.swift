@@ -57,7 +57,10 @@ struct FilterView: View {
             Spacer()
 
             Button {
-                dismiss()
+                Task { @MainActor in
+                    await viewModel.apply()
+                    dismiss()
+                }
             } label: {
                 Text("Применить")
                     .font(.system(size: 17, weight: .bold))
@@ -72,11 +75,6 @@ struct FilterView: View {
         }
         .background(Color(.ypWhite))
         .navigationBarTitleDisplayMode(.inline)
-        .onDisappear {
-            Task { @MainActor in
-                await viewModel.apply()
-            }
-        }
     }
 
     @ViewBuilder

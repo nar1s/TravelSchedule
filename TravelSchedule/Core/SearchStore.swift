@@ -152,6 +152,35 @@ final class SearchStore {
             await search()
         }
     }
+    
+    func recoverOnReconnect() async {
+        if self.carriersError == .noInternet {
+            self.carriersError = nil
+        }
+
+        async let catalogLoad: Void = loadCatalogIfNeeded()
+        async let searchRetry: Void = retryCarriersSearchIfNeeded()
+
+        await catalogLoad
+        await searchRetry
+    }
+    
+    @MainActor
+    private func loadCatalogIfNeeded() async {
+        if self.catalog == nil {
+            await self.loadCatalog()
+        }
+    }
+    
+    @MainActor
+    private func retryCarriersSearchIfNeeded() async {
+        let needsRetry = self.path.last == .carriers
+            && !self.isLoadingCarriers
+            && self.carriers.isEmpty
+        if needsRetry {
+            await self.search()
+        }
+    }
 
     private func parseDate(_ string: String?, baseDate: Date?) -> Date? {
         guard let string, !string.isEmpty else { return nil }
@@ -284,12 +313,7 @@ final class SearchStore {
 
 extension SearchStore {
     static var preview: SearchStore {
-        let store: SearchStore = {
-            guard let dependencies = try? AppDependencies(apikey: Constants.apiKey) else {
-                fatalError("Failed to initialize AppDependencies for preview")
-            }
-            return SearchStore(dependencies: dependencies)
-        }()
+        let store = SearchStore(dependencies: AppDependencies.preview)
         
         store.catalog = StationsCatalog(
             cities: [

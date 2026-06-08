@@ -10,7 +10,7 @@ import OpenAPIURLSession
 import Observation
 
 @Observable
-final class AppDependencies: Sendable {
+final class AppDependencies {
     let client: Client
 
     let carrierService: any CarrierServiceProtocol
@@ -58,5 +58,17 @@ final class AppDependencies: Sendable {
             carrierService: carrierService,
             connectivityMonitor: connectivityMonitor
         )
+    }
+}
+
+extension AppDependencies: @unchecked Sendable { }
+
+extension AppDependencies {
+    static var preview: AppDependencies {
+        do {
+            return try AppDependencies(apikey: Constants.apiKey)
+        } catch {
+            fatalError("\(error)")
+        }
     }
 }

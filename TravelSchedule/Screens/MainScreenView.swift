@@ -8,95 +8,89 @@
 import SwiftUI
 
 struct MainScreenView: View {
+    @State private var viewModel: MainScreenViewModel
     @Environment(SearchStore.self) private var store
     @Environment(AppDependencies.self) private var dependencies
-    @State private var viewModel: MainScreenViewModel?
+    
+    init(store: SearchStore) {
+        _viewModel = State(initialValue: MainScreenViewModel(store: store))
+    }
     
     var body: some View {
         NavigationStack(path: Binding(
-            get: { viewModel?.path ?? [] },
-            set: { viewModel?.path = $0 }
+            get: { viewModel.path },
+            set: { viewModel.path = $0 }
         )) {
             
             ZStack {
                 Color(.ypWhite)
                     .ignoresSafeArea()
                 
-                if let viewModel {
-                    VStack(spacing: 44) {
-                        StoriesBar()
-                            .padding(.horizontal, 16)
-                        
-                        searchCard
-                            .padding(.horizontal, 16)
-                        
-                        if viewModel.canSearch {
-                            Button {
-                                viewModel.search()
-                            } label: {
-                                Text("Найти")
-                                    .frame(width: 150, height: 60)
-                                    .font(.system(size: 17, weight: .bold))
-                                    .foregroundStyle(Color(.ypWhiteUniversal))
-                                    .background(Color(.ypBlue))
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                            }
+                VStack(spacing: 44) {
+                    StoriesBar()
+                        .padding(.horizontal, 16)
+                    
+                    searchCard
+                        .padding(.horizontal, 16)
+                    
+                    if viewModel.canSearch {
+                        Button {
+                            viewModel.search()
+                        } label: {
+                            Text("Найти")
+                                .frame(width: 150, height: 60)
+                                .font(.system(size: 17, weight: .bold))
+                                .foregroundStyle(Color(.ypWhiteUniversal))
+                                .background(Color(.ypBlue))
+                                .clipShape(RoundedRectangle(cornerRadius: 16))
                         }
-                        
-                        Spacer()
                     }
+                    
+                    Spacer()
                 }
             }
             .navigationDestination(for: Route.self) { route in
                 destinationView(for: route)
             }
         }
-        .task {
-            if viewModel == nil {
-                viewModel = MainScreenViewModel(store: store)
-            }
-        }
     }
     
+    @ViewBuilder
     private var searchCard: some View {
-        guard let viewModel else { return AnyView(EmptyView()) }
-        
-        return AnyView(
-            HStack(spacing: 16) {
-                VStack(spacing: 0) {
-                    StationField(
-                        title: "Откуда",
-                        stationTitle: viewModel.fromTitle,
-                        action: { viewModel.selectFromCity() }
-                    )
-                    
-                    StationField(
-                        title: "Куда",
-                        stationTitle: viewModel.toTitle,
-                        action: { viewModel.selectToCity() }
-                    )
-                }
-                .background(Color(.ypWhiteUniversal))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
+        HStack(spacing: 16) {
+            VStack(spacing: 0) {
+                StationField(
+                    title: "Откуда",
+                    stationTitle: viewModel.fromTitle,
+                    action: { viewModel.selectFromCity() }
+                )
                 
-                Button(action: { viewModel.swap() }) {
-                    Circle()
-                        .fill(Color(.ypWhiteUniversal))
-                        .frame(width: 36, height: 36)
-                        .overlay {
-                            Image(.switch)
-                                .resizable()
-                                .renderingMode(.template)
-                                .scaledToFit()
-                                .foregroundStyle(Color(.ypBlue))
-                                .frame(width: 20, height: 20)
-                        }
-                }
+                StationField(
+                    title: "Куда",
+                    stationTitle: viewModel.toTitle,
+                    action: { viewModel.selectToCity() }
+                )
             }
-                .padding(16)
-                .background(Color(.ypBlue))
-                .clipShape(RoundedRectangle(cornerRadius: 20))
-        )
+            .background(Color(.ypWhiteUniversal))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            
+            Button(action: { viewModel.swap() }) {
+                Circle()
+                    .fill(Color(.ypWhiteUniversal))
+                    .frame(width: 36, height: 36)
+                    .overlay {
+                        Image(.switch)
+                            .resizable()
+                            .renderingMode(.template)
+                            .scaledToFit()
+                            .foregroundStyle(Color(.ypBlue))
+                            .frame(width: 20, height: 20)
+                    }
+            }
+        }
+        .padding(16)
+        .background(Color(.ypBlue))
+        .clipShape(RoundedRectangle(cornerRadius: 20))
     }
     
     @ViewBuilder
@@ -196,15 +190,7 @@ private struct StationField: View {
 }
 
 #Preview {
-    let dependencies: AppDependencies = {
-        do {
-            return try AppDependencies(apikey: Constants.apiKey)
-        } catch {
-            fatalError("\(error)")
-        }
-    }()
-    
-    return MainScreenView()
+    return MainScreenView(store: SearchStore.preview)
         .environment(SearchStore.preview)
-        .environment(dependencies)
+        .environment(AppDependencies.preview)
 }

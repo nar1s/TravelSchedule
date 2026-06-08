@@ -19,7 +19,7 @@ struct MainTabView: View {
                 .ignoresSafeArea()
 
             TabView {
-                MainScreenView()
+                MainScreenView(store: store)
                     .environment(dependencies)
                     .overlay { errorOverlay }
                     .tabItem {
@@ -40,41 +40,13 @@ struct MainTabView: View {
             .tint(.primary)
             .toolbarBackground(Color(.ypWhite), for: .tabBar)
             .toolbarBackground(.visible, for: .tabBar)
-            .onChange(of: connectivity.isOnline) { _, isOnline in
-                guard isOnline else { return }
-                if store.carriersError == .noInternet {
-                    store.carriersError = nil
-                }
-                Task {
-                    if store.catalog == nil {
-                        await store.loadCatalog()
-                    }
-                    let onCarriers = store.path.last == .carriers
-                    let needsRetry = onCarriers
-                        && !store.isLoadingCarriers
-                        && store.carriers.isEmpty
-                    if needsRetry {
-                        await store.search()
-                    }
-                }
+            .task(id: connectivity.isOnline) {
+                guard connectivity.isOnline else { return }
+                await store.recoverOnReconnect()
             }
-            .onChange(of: scenePhase) {_, new in
-                guard new == .active, connectivity.isOnline else { return }
-                if store.carriersError == .noInternet {
-                    store.carriersError = nil
-                }
-                Task {
-                    if store.catalog == nil {
-                        await store.loadCatalog()
-                    }
-                    let onCarriers = store.path.last == .carriers
-                    let needsRetry = onCarriers
-                    && !store.isLoadingCarriers
-                    && store.carriers.isEmpty
-                    if needsRetry {
-                        await store.search()
-                    }
-                }
+            .task(id: scenePhase) {
+                guard scenePhase == .active, connectivity.isOnline else { return }
+                await store.recoverOnReconnect()
             }
         }
     }
@@ -96,16 +68,8 @@ struct MainTabView: View {
 }
 
 #Preview {
-    let dependencies: AppDependencies = {
-        do {
-            return try AppDependencies(apikey: Constants.apiKey)
-        } catch {
-            fatalError("\(error)")
-        }
-    }()
-    
     return MainTabView()
         .environment(SearchStore.preview)
         .environment(ConnectivityMonitor())
-        .environment(dependencies)
+        .environment(AppDependencies.preview)
 }

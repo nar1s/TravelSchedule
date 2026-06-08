@@ -26,11 +26,10 @@ struct RootView: View {
             case .splash:
                 SplashView()
                     .task {
-                        let minDelay = Task<Void, Never> {
-                            try? await Task.sleep(for: .seconds(1.5))
-                        }
-                        await store.loadCatalog()
-                        await minDelay.value
+                        async let minDelay: Void = Task.sleep(for: .seconds(1.5))
+                        async let catalog: Void = store.loadCatalog()
+                        _ = await (try? minDelay, catalog)
+
                         withAnimation(.easeInOut(duration: 0.25)) {
                             phase = .main
                         }

@@ -19,6 +19,9 @@ final class ConnectivityMonitor {
     
     @ObservationIgnored
     private var observationTask: Task<Void, Never>?
+    
+    @ObservationIgnored
+    private var hasStarted = false
 
     init() {
         startObserving()
@@ -28,7 +31,17 @@ final class ConnectivityMonitor {
         monitor.cancel()
     }
 
+    func currentPathSnapshot() async -> NWPath? {
+        await withCheckedContinuation { (continuation: CheckedContinuation<NWPath?, Never>) in
+            monitor.pathUpdateHandler = { path in
+                continuation.resume(returning: path)
+            }
+        }
+    }
+
     private func startObserving() {
+        startMonitoringIfNeeded()
+
         let stream = AsyncStream<Bool> { continuation in
             monitor.pathUpdateHandler = { path in
                 continuation.yield(path.status == .satisfied)
@@ -46,5 +59,11 @@ final class ConnectivityMonitor {
                 }
             }
         }
+    }
+
+    private func startMonitoringIfNeeded() {
+        guard !hasStarted else { return }
+        monitor.start(queue: .global(qos: .utility))
+        hasStarted = true
     }
 }

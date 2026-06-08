@@ -31,7 +31,7 @@ struct TravelScheduleApp: App {
         do {
             dependencies = try AppDependencies(apikey: Constants.apiKey)
         } catch {
-            print("❌ AppDependencies init failed: \(error)")
+            print("AppDependencies init failed: \(error)")
             return
         }
         _dependencies = State(initialValue: dependencies)

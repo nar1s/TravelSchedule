@@ -156,14 +156,6 @@ struct CarrierView: View {
 // MARK: - Preview
 
 #Preview("CarrierView") {
-    let dependencies: AppDependencies = {
-        do {
-            return try AppDependencies(apikey: Constants.apiKey)
-        } catch {
-            fatalError("\(error)")
-        }
-    }()
-    
     return NavigationStack {
         CarrierView(
             carrier: Carrier(
@@ -176,9 +168,9 @@ struct CarrierView: View {
                 hasTransfers: false,
                 carrierCode: "12"
             ),
-            networkClient: dependencies.networkClient
+            networkClient: AppDependencies.preview.networkClient
         )
         .environment(SearchStore.preview)
-        .environment(dependencies)
+        .environment(AppDependencies.preview)
     }
 }

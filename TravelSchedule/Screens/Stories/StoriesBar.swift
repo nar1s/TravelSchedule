@@ -12,7 +12,7 @@ struct StoriesBar: View {
     @State private var selectedGroup: StoryGroup?
     
     @AppStorage("viewedStoryGroups") private var viewedGroupsJSON: String = "[]"
-
+    
     private var viewedGroups: Set<UUID> {
         guard
             let data = viewedGroupsJSON.data(using: .utf8),
@@ -22,7 +22,7 @@ struct StoriesBar: View {
         }
         return Set(ids)
     }
-
+    
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 12) {
@@ -36,7 +36,7 @@ struct StoriesBar: View {
                             .scaledToFill()
                             .frame(width: 92, height: 140)
                             .clipShape(RoundedRectangle(cornerRadius: 16))
-                            
+                        
                             .overlay(alignment: .bottomLeading) {
                                 Text(group.stories.first?.title ?? "")
                                     .font(.system(size: 12, weight: .regular))
@@ -60,16 +60,22 @@ struct StoriesBar: View {
             }
         }
         .fullScreenCover(item: $selectedGroup) { group in
-            StoriesViewer(group: group) {
-                var current = viewedGroups
-                current.insert(group.id)
-                if
-                    let data = try? JSONEncoder().encode(Array(current)),
-                    let str = String(data: data, encoding: .utf8)
-                {
-                    viewedGroupsJSON = str
+            StoriesViewer(
+                group: group,
+                onViewed: {
+                    var current = viewedGroups
+                    current.insert(group.id)
+                    if
+                        let data = try? JSONEncoder().encode(Array(current)),
+                        let str = String(data: data, encoding: .utf8)
+                    {
+                        viewedGroupsJSON = str
+                    }
+                },
+                onFinished: {
+                    selectedGroup = nil
                 }
-            }
+            )
         }
     }
 }
