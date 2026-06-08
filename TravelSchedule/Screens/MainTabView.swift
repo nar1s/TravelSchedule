@@ -10,6 +10,7 @@ import SwiftUI
 struct MainTabView: View {
     @Environment(SearchStore.self) private var store
     @Environment(ConnectivityMonitor.self) private var connectivity
+    @Environment(AppDependencies.self) private var dependencies
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -19,6 +20,7 @@ struct MainTabView: View {
 
             TabView {
                 MainScreenView()
+                    .environment(dependencies)
                     .overlay { errorOverlay }
                     .tabItem {
                         Image(.schedule)
@@ -27,6 +29,7 @@ struct MainTabView: View {
                     }
 
                 SettingsView()
+                    .environment(dependencies)
                     .overlay { errorOverlay }
                     .tabItem {
                         Image(.settings)
@@ -93,7 +96,16 @@ struct MainTabView: View {
 }
 
 #Preview {
-    MainTabView()
+    let dependencies: AppDependencies = {
+        do {
+            return try AppDependencies(apikey: Constants.apiKey)
+        } catch {
+            fatalError("\(error)")
+        }
+    }()
+    
+    return MainTabView()
         .environment(SearchStore.preview)
         .environment(ConnectivityMonitor())
+        .environment(dependencies)
 }

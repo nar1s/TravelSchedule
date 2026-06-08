@@ -14,6 +14,7 @@ private enum AppPhase {
 
 struct RootView: View {
     @Environment(SearchStore.self) private var store
+    @Environment(AppDependencies.self) private var dependencies
     @State private var phase: AppPhase = .splash
 
     var body: some View {

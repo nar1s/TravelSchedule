@@ -12,33 +12,57 @@ import Observation
 @MainActor
 @Observable
 final class MainScreenViewModel {
-    private let store: SearchStore
+    @ObservationIgnored private let store: SearchStore
     
     var from: Station? {
-        get { store.from }
-        set { store.from = newValue }
+        get {
+            access(keyPath: \.from)
+            return store.from
+        }
+        set {
+            withMutation(keyPath: \.from) {
+                store.from = newValue
+            }
+        }
     }
     
     var to: Station? {
-        get { store.to }
-        set { store.to = newValue }
+        get {
+            access(keyPath: \.to)
+            return store.to
+        }
+        set {
+            withMutation(keyPath: \.to) {
+                store.to = newValue
+            }
+        }
     }
     
     var path: [Route] {
-        get { store.path }
-        set { store.path = newValue }
+        get {
+            access(keyPath: \.path)
+            return store.path
+        }
+        set {
+            withMutation(keyPath: \.path) {
+                store.path = newValue
+            }
+        }
     }
     
     var canSearch: Bool {
-        from != nil && to != nil
+        access(keyPath: \.path)
+        return from != nil && to != nil
     }
     
     var fromTitle: String? {
-        from?.title
+        access(keyPath: \.path)
+        return from?.title
     }
     
     var toTitle: String? {
-        to?.title
+        access(keyPath: \.path)
+        return to?.title
     }
     
     init(store: SearchStore) {
@@ -59,6 +83,5 @@ final class MainScreenViewModel {
     
     func search() {
         store.path.append(.carriers)
-        Task { await store.search() }
     }
 }

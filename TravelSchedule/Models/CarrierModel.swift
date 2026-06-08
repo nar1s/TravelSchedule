@@ -17,4 +17,3 @@ struct Carrier: Identifiable, Hashable, Sendable {
     let hasTransfers: Bool
     let carrierCode: String?
 }
-

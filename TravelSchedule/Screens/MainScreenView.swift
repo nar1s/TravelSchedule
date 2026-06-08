@@ -9,6 +9,7 @@ import SwiftUI
 
 struct MainScreenView: View {
     @Environment(SearchStore.self) private var store
+    @Environment(AppDependencies.self) private var dependencies
     @State private var viewModel: MainScreenViewModel?
     
     var body: some View {
@@ -116,6 +117,7 @@ struct MainScreenView: View {
                     )
                 }
             }
+            .environment(dependencies)
             .toolbar(.hidden, for: .tabBar)
             .navigationBarBackButtonHidden(true)
             .toolbar {
@@ -139,6 +141,7 @@ struct MainScreenView: View {
                     )
                 }
             }
+            .environment(dependencies)
             .toolbar(.hidden, for: .tabBar)
             .navigationBarBackButtonHidden(true)
             .toolbar {
@@ -148,7 +151,8 @@ struct MainScreenView: View {
             }
             
         case .carriers:
-            CarriersListView()
+            CarriersListView(store: store)
+                .environment(dependencies)
                 .navigationBarBackButtonHidden(true)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
@@ -157,7 +161,8 @@ struct MainScreenView: View {
                 }
             
         case .filter:
-            FilterView()
+            FilterView(store: store)
+                .environment(dependencies)
                 .toolbar(.hidden, for: .tabBar)
                 .navigationBarBackButtonHidden(true)
                 .toolbar {
@@ -191,6 +196,15 @@ private struct StationField: View {
 }
 
 #Preview {
-    MainScreenView()
+    let dependencies: AppDependencies = {
+        do {
+            return try AppDependencies(apikey: Constants.apiKey)
+        } catch {
+            fatalError("\(error)")
+        }
+    }()
+    
+    return MainScreenView()
         .environment(SearchStore.preview)
+        .environment(dependencies)
 }

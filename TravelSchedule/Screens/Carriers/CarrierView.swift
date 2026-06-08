@@ -10,23 +10,27 @@ import SwiftUI
 struct CarrierView: View {
     let carrier: Carrier
     
-    @Environment(SearchStore.self) private var store
-    @Environment(AppDependencies.self) private var dependencies
-    @State private var viewModel: CarrierViewModel?
-    
+    @StateObject private var viewModel: CarrierViewModel
+
+    init(carrier: Carrier, networkClient: any NetworkClientProtocol) {
+        self.carrier = carrier
+        _viewModel = StateObject(wrappedValue: CarrierViewModel(
+            carrier: carrier,
+            networkClient: networkClient
+        ))
+    }
+
     var body: some View {
         ZStack {
             Color(.ypWhite)
                 .ignoresSafeArea()
             
-            if let viewModel {
-                if viewModel.isLoading {
-                    ProgressView()
-                } else if viewModel.hasError {
-                    errorView
-                } else {
-                    content(details: viewModel.details)
-                }
+            if viewModel.isLoading {
+                ProgressView()
+            } else if viewModel.hasError {
+                errorView
+            } else {
+                content(details: viewModel.details)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -36,13 +40,7 @@ struct CarrierView: View {
             customNavigationBar
         }
         .task {
-            if viewModel == nil {
-                viewModel = CarrierViewModel(
-                    carrier: carrier,
-                    networkClient: dependencies.networkClient
-                )
-            }
-            await viewModel?.load()
+            await viewModel.load()
         }
     }
     
@@ -158,17 +156,29 @@ struct CarrierView: View {
 // MARK: - Preview
 
 #Preview("CarrierView") {
-    NavigationStack {
-        CarrierView(carrier: Carrier(
-            id: "1",
-            title: "РЖД",
-            logoURL: URL(string: ""),
-            departure: Date(),
-            arrival: Date().addingTimeInterval(7200),
-            duration: 7200,
-            hasTransfers: false,
-            carrierCode: "12"
-        ))
+    let dependencies: AppDependencies = {
+        do {
+            return try AppDependencies(apikey: Constants.apiKey)
+        } catch {
+            fatalError("\(error)")
+        }
+    }()
+    
+    return NavigationStack {
+        CarrierView(
+            carrier: Carrier(
+                id: "1",
+                title: "РЖД",
+                logoURL: URL(string: ""),
+                departure: Date(),
+                arrival: Date().addingTimeInterval(7200),
+                duration: 7200,
+                hasTransfers: false,
+                carrierCode: "12"
+            ),
+            networkClient: dependencies.networkClient
+        )
         .environment(SearchStore.preview)
+        .environment(dependencies)
     }
 }

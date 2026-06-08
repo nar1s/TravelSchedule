@@ -8,71 +8,72 @@
 import SwiftUI
 
 struct CarriersListView: View {
-    @Environment(SearchStore.self) private var store
-    @State private var viewModel: CarriersListViewModel?
+    @StateObject private var viewModel: CarriersListViewModel
+    @Environment(AppDependencies.self) private var dependencies
+
+    init(store: SearchStore) {
+        _viewModel = StateObject(wrappedValue: CarriersListViewModel(store: store))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            if let viewModel {
-                Text("\(viewModel.fromTitle ?? "") → \(viewModel.toTitle ?? "")")
-                    .font(.system(size: 24, weight: .bold))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 16)
-                    .padding(.top, 16)
+            Text("\(viewModel.fromTitle ?? "") → \(viewModel.toTitle ?? "")")
+                .font(.system(size: 24, weight: .bold))
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 16)
+                .padding(.top, 16)
 
-                ZStack {
-                    if viewModel.isLoading && viewModel.filteredCarriers.isEmpty {
-                        ProgressView()
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    } else if viewModel.filteredCarriers.isEmpty {
-                        emptyView
-                    } else {
-                        contentView(viewModel: viewModel)
-                    }
+            ZStack {
+                if viewModel.isLoading && viewModel.filteredCarriers.isEmpty {
+                    ProgressView()
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if viewModel.filteredCarriers.isEmpty {
+                    emptyView
+                } else {
+                    contentView
                 }
             }
         }
         .background(Color(.ypWhite).ignoresSafeArea())
         .overlay(alignment: .bottom) {
-            if let viewModel {
-                Button {
-                    viewModel.openFilter()
-                } label: {
-                    HStack(spacing: 4) {
-                        Text("Уточнить время")
-                        if viewModel.filter.isActive {
-                            Circle()
-                                .fill(.ypRed)
-                                .frame(width: 8, height: 8)
-                        }
+            Button {
+                viewModel.openFilter()
+            } label: {
+                HStack(spacing: 4) {
+                    Text("Уточнить время")
+                    if viewModel.filter.isActive {
+                        Circle()
+                            .fill(.ypRed)
+                            .frame(width: 8, height: 8)
                     }
-                    .font(.system(size: 17, weight: .bold))
-                    .foregroundStyle(.ypWhiteUniversal)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 60)
-                    .background(Color(.ypBlue))
-                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                    .padding([.horizontal, .top], 16)
                 }
-                .disabled(viewModel.filteredCarriers.isEmpty && !viewModel.isLoading)
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(.ypWhiteUniversal)
+                .frame(maxWidth: .infinity)
+                .frame(height: 60)
+                .background(Color(.ypBlue))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+                .padding([.horizontal, .top], 16)
             }
+            .disabled(viewModel.filteredCarriers.isEmpty && !viewModel.isLoading)
         }
         .task {
-            if viewModel == nil {
-                viewModel = CarriersListViewModel(store: store)
-            }
-            guard let viewModel else { return }
-            guard !viewModel.isLoading, viewModel.filteredCarriers.isEmpty else { return }
             await viewModel.search()
+        }
+        .onAppear {
+            viewModel.refreshFilteredCarriers()
         }
         .toolbar(.hidden, for: .tabBar)
     }
 
-    private func contentView(viewModel: CarriersListViewModel) -> some View {
+    private var contentView: some View {
         ScrollView {
             LazyVStack(spacing: 8) {
                 ForEach(viewModel.filteredCarriers) { carrier in
-                    NavigationLink(destination: CarrierView(carrier: carrier)) {
+                    NavigationLink(destination: CarrierView(
+                        carrier: carrier,
+                        networkClient: dependencies.networkClient
+                    )) {
                         CarrierCardView(carrier: carrier)
                     }
                     .buttonStyle(.plain)
@@ -90,12 +91,5 @@ struct CarriersListView: View {
                 .foregroundStyle(Color(.ypBlack))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-}
-
-#Preview {
-    NavigationStack {
-        CarriersListView()
-            .environment(SearchStore.preview)
     }
 }

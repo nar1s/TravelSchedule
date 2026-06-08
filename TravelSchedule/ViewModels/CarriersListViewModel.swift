@@ -30,6 +30,7 @@ final class CarriersListViewModel: ObservableObject {
     }
     
     func search() async {
+        isLoading = true
         await store.search()
         self.fromTitle = store.from?.title
         self.toTitle = store.to?.title
@@ -42,5 +43,9 @@ final class CarriersListViewModel: ObservableObject {
     func openFilter() {
         store.path.append(.filter)
     }
+    
+    func refreshFilteredCarriers() {
+        self.filter = store.filter
+        self.filteredCarriers = store.filteredCarriers
+    }
 }
-
