@@ -18,7 +18,7 @@ final class StoriesViewerViewModel: ObservableObject {
     let duration: Double
     let tick: Double
 
-    private let onFinished: @MainActor () -> Void
+    private let onStoriesFinished: @MainActor () -> Void
 
     private var timerTask: Task<Void, Never>?
 
@@ -26,12 +26,12 @@ final class StoriesViewerViewModel: ObservableObject {
         group: StoryGroup,
         duration: Double = 5.0,
         tick: Double = 0.05,
-        onFinished: @escaping @MainActor () -> Void = {}
+        onStoriesFinished: @escaping @MainActor () -> Void = {}
     ) {
         self.group = group
         self.duration = duration
         self.tick = tick
-        self.onFinished = onFinished
+        self.onStoriesFinished = onStoriesFinished
     }
 
     deinit {
@@ -114,7 +114,7 @@ final class StoriesViewerViewModel: ObservableObject {
                 progress = 0
             } else {
                 stop()
-                onFinished()
+                onStoriesFinished()
             }
         }
     }

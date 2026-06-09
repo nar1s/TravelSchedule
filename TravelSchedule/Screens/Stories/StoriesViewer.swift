@@ -9,21 +9,22 @@ import SwiftUI
 
 struct StoriesViewer: View {
     let group: StoryGroup
-    let onViewed: () -> Void
     
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel: StoriesViewerViewModel
     
+    private let onStoryGroupViewed: () -> Void
+    
     init(
         group: StoryGroup,
-        onViewed: @escaping () -> Void,
-        onFinished: @escaping () -> Void
+        onStoryGroupViewed: @escaping () -> Void,
+        onStoriesFinished: @escaping () -> Void
     ) {
         self.group = group
-        self.onViewed = onViewed
+        self.onStoryGroupViewed = onStoryGroupViewed
         let viewModel = StoriesViewerViewModel(
             group: group,
-            onFinished: onFinished
+            onStoriesFinished: onStoriesFinished
         )
         _viewModel = StateObject(wrappedValue: viewModel)
     }
@@ -123,7 +124,7 @@ struct StoriesViewer: View {
         .onAppear { viewModel.start() }
         .onDisappear {
             viewModel.stop()
-            onViewed()
+            onStoryGroupViewed()
         }
     }
 }

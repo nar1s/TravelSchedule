@@ -8,44 +8,60 @@
 import Foundation
 import Combine
 
+enum CarriersListState: Equatable {
+    case idle
+    case loading
+    case empty
+    case loaded([Carrier])
+    case failed(AppError)
+}
+
 @MainActor
 final class CarriersListViewModel: ObservableObject {
+    
+    @Published private(set) var state: CarriersListState = .idle
+    
     @Published var fromTitle: String?
     @Published var toTitle: String?
-    @Published var filteredCarriers: [Carrier] = []
-    @Published var isLoading: Bool = false
-    @Published var error: AppError?
     @Published var filter: FilterState = FilterState()
     
     private let store: SearchStore
     
     init(store: SearchStore) {
         self.store = store
-        self.fromTitle = store.from?.title
-        self.toTitle = store.to?.title
-        self.filteredCarriers = store.filteredCarriers
-        self.isLoading = store.isLoadingCarriers
-        self.error = store.carriersError
-        self.filter = store.filter
+        syncMetaFromStore()
     }
     
     func search() async {
-        isLoading = true
+        if case .loading = state { return }
+        state = .loading
         await store.search()
-        self.fromTitle = store.from?.title
-        self.toTitle = store.to?.title
-        self.filteredCarriers = store.filteredCarriers
-        self.isLoading = store.isLoadingCarriers
-        self.error = store.carriersError
-        self.filter = store.filter
+        state = makeState(from: store)
+        syncMetaFromStore()
     }
-    
+
     func openFilter() {
         store.path.append(.filter)
     }
     
     func refreshFilteredCarriers() {
+        state = makeState(from: store)
+        syncMetaFromStore()
+    }
+    
+    private func syncMetaFromStore() {
+        self.fromTitle = store.from?.title
+        self.toTitle = store.to?.title
         self.filter = store.filter
-        self.filteredCarriers = store.filteredCarriers
+    }
+    
+    private func makeState(from store: SearchStore) -> CarriersListState {
+        if let error = store.carriersError {
+            return .failed(error)
+        }
+        if store.filteredCarriers.isEmpty {
+            return .empty
+        }
+        return .loaded(store.filteredCarriers)
     }
 }

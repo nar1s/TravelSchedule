@@ -8,13 +8,18 @@
 import Foundation
 import Combine
 
+enum CarrierState: Equatable {
+    case loading
+    case loaded(CarrierDetails)
+    case failed
+}
+
 @MainActor
 final class CarrierViewModel: ObservableObject {
-    @Published var details: CarrierDetails?
-    @Published var isLoading: Bool = true
-    @Published var hasError: Bool = false
     
-    let carrier: Carrier
+    @Published private(set) var state: CarrierState = .loading
+    
+    private let carrier: Carrier
     private let networkClient: any NetworkClientProtocol
     
     init(carrier: Carrier, networkClient: any NetworkClientProtocol) {
@@ -23,18 +28,25 @@ final class CarrierViewModel: ObservableObject {
     }
     
     func load() async {
-        isLoading = true
-        hasError = false
-        defer { isLoading = false }
-        
+        state = .loading
         do {
-            let response = try await networkClient.getCarrierInfo(code: carrier.carrierCode ?? "")
-            details = response.toCarrierDetails()
-            hasError = false
+            let details = try await fetchDetails()
+            state = .loaded(details)
         } catch {
-            details = nil
-            hasError = true
+            state = .failed
         }
+    }
+    
+    private func fetchDetails() async throws -> CarrierDetails {
+        guard let code = carrier.carrierCode, !code.isEmpty else {
+            return CarrierDetails(email: "", phone: "")
+        }
+        
+        let response = try await networkClient.getCarrierInfo(code: code)
+        
+        let email = response.carrier?.email ?? ""
+        let phone = response.carrier?.phone ?? ""
+        return CarrierDetails(email: email, phone: phone)
     }
 }
 

@@ -25,13 +25,7 @@ struct CarrierView: View {
             Color(.ypWhite)
                 .ignoresSafeArea()
             
-            if viewModel.isLoading {
-                ProgressView()
-            } else if viewModel.hasError {
-                errorView
-            } else {
-                content(details: viewModel.details)
-            }
+            content
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
@@ -45,6 +39,18 @@ struct CarrierView: View {
     }
     
     // MARK: - Custom Navigation Bar
+    
+    @ViewBuilder
+    private var content: some View {
+        switch viewModel.state {
+        case .loading:
+            ProgressView()
+        case .failed:
+            errorView
+        case .loaded(let details):
+            contentView(details: details)
+        }
+    }
     
     private var customNavigationBar: some View {
         Text("Информация о перевозчике")
@@ -62,7 +68,7 @@ struct CarrierView: View {
     
     // MARK: - Private Views
     
-    private func content(details: CarrierDetails?) -> some View {
+    private func contentView(details: CarrierDetails) -> some View {
         ScrollView {
             VStack(spacing: 24) {
                 logoView
@@ -82,7 +88,7 @@ struct CarrierView: View {
     
     private var errorView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
+            Image(systemName: SFSymbol.xclamationmarkTriangle)
                 .font(.system(size: 48))
                 .foregroundStyle(Color(.ypGray))
             
@@ -124,8 +130,8 @@ struct CarrierView: View {
     }
     
     @ViewBuilder
-    private func contactInfoView(details: CarrierDetails?) -> some View {
-        if let details, details.hasAnyInfo {
+    private func contactInfoView(details: CarrierDetails) -> some View {
+        if details.hasAnyInfo {
             VStack(alignment: .leading, spacing: 16) {
                 if !details.email.isEmpty {
                     contactRow(title: "E-mail", value: details.email)

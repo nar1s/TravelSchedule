@@ -24,10 +24,10 @@ struct CarriersListView: View {
                 .padding(.top, 16)
 
             ZStack {
-                if viewModel.isLoading && viewModel.filteredCarriers.isEmpty {
+                if isLoadingInitial {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if viewModel.filteredCarriers.isEmpty {
+                } else if isEmpty {
                     emptyView
                 } else {
                     contentView
@@ -55,7 +55,7 @@ struct CarriersListView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16))
                 .padding([.horizontal, .top], 16)
             }
-            .disabled(viewModel.filteredCarriers.isEmpty && !viewModel.isLoading)
+            .disabled(isFilterButtonDisabled)
         }
         .task {
             await viewModel.search()
@@ -69,7 +69,7 @@ struct CarriersListView: View {
     private var contentView: some View {
         ScrollView {
             LazyVStack(spacing: 8) {
-                ForEach(viewModel.filteredCarriers) { carrier in
+                ForEach(carriers) { carrier in
                     NavigationLink(destination: CarrierView(
                         carrier: carrier,
                         networkClient: dependencies.networkClient
@@ -91,5 +91,37 @@ struct CarriersListView: View {
                 .foregroundStyle(Color(.ypBlack))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+    
+    private var carriers: [Carrier] {
+        if case .loaded(let carriers) = viewModel.state {
+            return carriers
+        }
+        return []
+    }
+
+    private var isLoadingInitial: Bool {
+        switch viewModel.state {
+        case .idle, .loading:
+            return true
+        case .empty, .loaded, .failed:
+            return false
+        }
+    }
+
+    private var isEmpty: Bool {
+        if case .empty = viewModel.state {
+            return true
+        }
+        return false
+    }
+
+    private var isFilterButtonDisabled: Bool {
+        switch viewModel.state {
+        case .loaded, .empty, .failed:
+            return false
+        case .idle, .loading:
+            return true
+        }
     }
 }

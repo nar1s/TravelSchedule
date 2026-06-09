@@ -53,7 +53,11 @@ final class ConnectivityMonitor {
 
         observationTask = Task { [weak self] in
             for await isOnline in stream {
-                guard let self else { return }
+
+                guard let self else {
+                    return
+                }
+
                 if self.isOnline != isOnline {
                     self.isOnline = isOnline
                 }

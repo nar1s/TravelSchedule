@@ -62,7 +62,7 @@ struct StoriesBar: View {
         .fullScreenCover(item: $selectedGroup) { group in
             StoriesViewer(
                 group: group,
-                onViewed: {
+                onStoryGroupViewed: {
                     var current = viewedGroups
                     current.insert(group.id)
                     if
@@ -72,7 +72,7 @@ struct StoriesBar: View {
                         viewedGroupsJSON = str
                     }
                 },
-                onFinished: {
+                onStoriesFinished: {
                     selectedGroup = nil
                 }
             )
