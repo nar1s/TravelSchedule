@@ -10,7 +10,7 @@ import OpenAPIURLSession
 
 typealias Search = Components.Schemas.Segments
 
-protocol SearchServiceProtocol {
+protocol SearchServiceProtocol: Sendable {
     func getScheduleBetweenStations(from: String, to: String, date: String?, transfers: Bool) async throws -> Search
 }
 

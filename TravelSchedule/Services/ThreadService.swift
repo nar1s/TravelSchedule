@@ -10,7 +10,7 @@ import OpenAPIURLSession
 
 typealias Thread = Components.Schemas.ThreadStationsResponse
 
-protocol ThreadServiceProtocol {
+protocol ThreadServiceProtocol: Sendable {
     func getRouteStations(uid: String) async throws -> Thread
 }
 

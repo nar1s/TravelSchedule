@@ -8,27 +8,34 @@
 import SwiftUI
 
 struct MainScreenView: View {
+    @State private var viewModel: MainScreenViewModel
     @Environment(SearchStore.self) private var store
-
+    @Environment(AppDependencies.self) private var dependencies
+    
+    init(store: SearchStore) {
+        _viewModel = State(initialValue: MainScreenViewModel(store: store))
+    }
+    
     var body: some View {
-        @Bindable var bindableStore = store
-
-        NavigationStack(path: $bindableStore.path) {
+        NavigationStack(path: Binding(
+            get: { viewModel.path },
+            set: { viewModel.path = $0 }
+        )) {
+            
             ZStack {
                 Color(.ypWhite)
                     .ignoresSafeArea()
-
+                
                 VStack(spacing: 44) {
                     StoriesBar()
                         .padding(.horizontal, 16)
                     
                     searchCard
                         .padding(.horizontal, 16)
-
-                    if store.from != nil && store.to != nil {
+                    
+                    if viewModel.canSearch {
                         Button {
-                            store.path.append(.carriers)
-                            Task { await store.search() }
+                            viewModel.search()
                         } label: {
                             Text("Найти")
                                 .frame(width: 150, height: 60)
@@ -38,7 +45,7 @@ struct MainScreenView: View {
                                 .clipShape(RoundedRectangle(cornerRadius: 16))
                         }
                     }
-
+                    
                     Spacer()
                 }
             }
@@ -47,26 +54,27 @@ struct MainScreenView: View {
             }
         }
     }
-
+    
+    @ViewBuilder
     private var searchCard: some View {
         HStack(spacing: 16) {
             VStack(spacing: 0) {
                 StationField(
                     title: "Откуда",
-                    stationTitle: store.from?.title,
-                    action: { store.path.append(.cityList(direction: .from)) }
+                    stationTitle: viewModel.fromTitle,
+                    action: { viewModel.selectFromCity() }
                 )
-
+                
                 StationField(
                     title: "Куда",
-                    stationTitle: store.to?.title,
-                    action: { store.path.append(.cityList(direction: .to)) }
+                    stationTitle: viewModel.toTitle,
+                    action: { viewModel.selectToCity() }
                 )
             }
             .background(Color(.ypWhiteUniversal))
             .clipShape(RoundedRectangle(cornerRadius: 20))
-
-            Button(action: store.swap) {
+            
+            Button(action: { viewModel.swap() }) {
                 Circle()
                     .fill(Color(.ypWhiteUniversal))
                     .frame(width: 36, height: 36)
@@ -84,7 +92,7 @@ struct MainScreenView: View {
         .background(Color(.ypBlue))
         .clipShape(RoundedRectangle(cornerRadius: 20))
     }
-
+    
     @ViewBuilder
     private func destinationView(for route: Route) -> some View {
         switch route {
@@ -103,6 +111,7 @@ struct MainScreenView: View {
                     )
                 }
             }
+            .environment(dependencies)
             .toolbar(.hidden, for: .tabBar)
             .navigationBarBackButtonHidden(true)
             .toolbar {
@@ -110,7 +119,7 @@ struct MainScreenView: View {
                     BackButton()
                 }
             }
-
+            
         case .stationList(let direction, let city):
             Group {
                 if let catalog = store.catalog {
@@ -126,6 +135,7 @@ struct MainScreenView: View {
                     )
                 }
             }
+            .environment(dependencies)
             .toolbar(.hidden, for: .tabBar)
             .navigationBarBackButtonHidden(true)
             .toolbar {
@@ -133,18 +143,20 @@ struct MainScreenView: View {
                     BackButton()
                 }
             }
-
+            
         case .carriers:
-            CarriersListView()
+            CarriersListView(store: store)
+                .environment(dependencies)
                 .navigationBarBackButtonHidden(true)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarLeading) {
                         BackButton()
                     }
                 }
-
+            
         case .filter:
-            FilterView()
+            FilterView(store: store)
+                .environment(dependencies)
                 .toolbar(.hidden, for: .tabBar)
                 .navigationBarBackButtonHidden(true)
                 .toolbar {
@@ -160,7 +172,7 @@ private struct StationField: View {
     let title: String
     let stationTitle: String?
     let action: () -> Void
-
+    
     var body: some View {
         Button(action: action) {
             HStack {
@@ -178,6 +190,7 @@ private struct StationField: View {
 }
 
 #Preview {
-    MainScreenView()
+    return MainScreenView(store: SearchStore.preview)
         .environment(SearchStore.preview)
+        .environment(AppDependencies.preview)
 }

@@ -5,7 +5,7 @@
 //  Created by Павел Кузнецов on 25.05.2026.
 //
 
-struct City: Identifiable, Hashable {
+struct City: Identifiable, Hashable, Sendable {
     let id: String
     let title: String
 }

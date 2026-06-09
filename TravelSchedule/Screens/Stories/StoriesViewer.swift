@@ -9,27 +9,31 @@ import SwiftUI
 
 struct StoriesViewer: View {
     let group: StoryGroup
-    let onViewed: () -> Void
     
     @Environment(\.dismiss) private var dismiss
-
-    @State private var currentIndex: Int = 0
-    @State private var progress: Double = 0
-    @State private var timerTask: Task<Void, Never>?
-    @State private var isPaused: Bool = false
-
-    private let duration: Double = 5.0
-    private let tick: Double = 0.05
+    @StateObject private var viewModel: StoriesViewerViewModel
     
-    private var currentStory: Story {
-        group.stories[currentIndex]
+    private let onStoryGroupViewed: () -> Void
+    
+    init(
+        group: StoryGroup,
+        onStoryGroupViewed: @escaping () -> Void,
+        onStoriesFinished: @escaping () -> Void
+    ) {
+        self.group = group
+        self.onStoryGroupViewed = onStoryGroupViewed
+        let viewModel = StoriesViewerViewModel(
+            group: group,
+            onStoriesFinished: onStoriesFinished
+        )
+        _viewModel = StateObject(wrappedValue: viewModel)
     }
 
     var body: some View {
         ZStack {
             Color.ypBlackUniversal.ignoresSafeArea()
 
-            Image(currentStory.imageName)
+            Image(viewModel.currentStory.imageName)
                 .resizable()
                 .scaledToFill()
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -38,21 +42,21 @@ struct StoriesViewer: View {
             VStack {
                 StoryProgressBar(
                     count: group.stories.count,
-                    currentIndex: currentIndex,
-                    progress: progress
+                    currentIndex: viewModel.currentIndex,
+                    progress: viewModel.progress
                 )
                 .padding(.top, 8)
 
                 Spacer()
                 
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(currentStory.title)
+                    Text(viewModel.currentStory.title)
                         .font(.system(size: 34, weight: .bold))
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
                         .lineLimit(2)
 
-                    Text(currentStory.description)
+                    Text(viewModel.currentStory.description)
                         .font(.system(size: 20, weight: .regular))
                         .foregroundStyle(.white)
                         .fixedSize(horizontal: false, vertical: true)
@@ -67,22 +71,26 @@ struct StoriesViewer: View {
                 Rectangle()
                     .fill(Color.clear)
                     .contentShape(Rectangle())
-                    .onTapGesture { previous() }
+                    .onTapGesture { viewModel.previous() }
 
                 Rectangle()
                     .fill(Color.clear)
                     .contentShape(Rectangle())
-                    .onTapGesture { next() }
+                    .onTapGesture {
+                        if !viewModel.next() {
+                            dismiss()
+                        }
+                    }
             }
 
             VStack {
                 HStack {
                     Spacer()
                     Button {
-                        stop()
+                        viewModel.stop()
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
+                        Image(systemName: SFSymbol.xmark)
                             .font(.system(size: 14, weight: .semibold))
                             .foregroundStyle(Color(.ypWhiteUniversal))
                             .frame(width: 30, height: 30)
@@ -99,83 +107,24 @@ struct StoriesViewer: View {
         .simultaneousGesture(
             DragGesture(minimumDistance: 0)
                 .onChanged { _ in
-                    if !isPaused {
-                        isPaused = true
-                        pause()
-                    }
+                    viewModel.pause()
                 }
                 .onEnded { value in
                     let horizontalTranslation = value.translation.width
                     if horizontalTranslation < -50 {
-                        next()
+                        if !viewModel.next() {
+                            dismiss()
+                        }
+                    } else if horizontalTranslation > 50 {
+                        viewModel.previous()
                     }
-                    else if horizontalTranslation > 50 {
-                        previous()
-                    }
-                    isPaused = false
-                    resume()
+                    viewModel.resume()
                 }
         )
-        .onAppear { start() }
+        .onAppear { viewModel.start() }
         .onDisappear {
-            stop()
-            onViewed()
-        }
-    }
-
-    private func start() {
-        stop()
-        timerTask = Task { @MainActor in
-            while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: UInt64(tick * 1_000_000_000))
-                if !isPaused {
-                    progress += tick / duration
-                    if progress >= 1.0 {
-                        if currentIndex < group.stories.count - 1 {
-                            currentIndex += 1
-                            progress = 0
-                        } else {
-                            stop()
-                            dismiss()
-                            return
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    private func stop() {
-        timerTask?.cancel()
-        timerTask = nil
-    }
-
-    private func pause() {
-        stop()
-    }
-
-    private func resume() {
-        if !isPaused {
-            start()
-        }
-    }
-
-    private func next() {
-        if currentIndex < group.stories.count - 1 {
-            currentIndex += 1
-            progress = 0
-        } else {
-            stop()
-            dismiss()
-        }
-    }
-
-    private func previous() {
-        if currentIndex > 0 {
-            currentIndex -= 1
-            progress = 0
-        } else {
-            progress = 0
+            viewModel.stop()
+            onStoryGroupViewed()
         }
     }
 }

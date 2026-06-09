@@ -8,7 +8,7 @@
 import OpenAPIRuntime
 import OpenAPIURLSession
 
-class BaseService {
+class BaseService: Sendable {
     let client: Client
     let apikey: String
 

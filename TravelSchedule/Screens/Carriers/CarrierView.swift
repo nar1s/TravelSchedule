@@ -10,23 +10,22 @@ import SwiftUI
 struct CarrierView: View {
     let carrier: Carrier
     
-    @Environment(SearchStore.self) private var store
-    @State private var carrierDetails: CarrierDetails?
-    @State private var isLoading = true
-    @State private var hasError = false
-    
+    @StateObject private var viewModel: CarrierViewModel
+
+    init(carrier: Carrier, networkClient: any NetworkClientProtocol) {
+        self.carrier = carrier
+        _viewModel = StateObject(wrappedValue: CarrierViewModel(
+            carrier: carrier,
+            networkClient: networkClient
+        ))
+    }
+
     var body: some View {
         ZStack {
             Color(.ypWhite)
                 .ignoresSafeArea()
             
-            if isLoading {
-                ProgressView()
-            } else if hasError {
-                errorView
-            } else {
-                content
-            }
+            content
         }
         .toolbar(.hidden, for: .navigationBar)
         .navigationBarBackButtonHidden(true)
@@ -35,11 +34,23 @@ struct CarrierView: View {
             customNavigationBar
         }
         .task {
-            await loadCarrierDetails()
+            await viewModel.load()
         }
     }
     
     // MARK: - Custom Navigation Bar
+    
+    @ViewBuilder
+    private var content: some View {
+        switch viewModel.state {
+        case .loading:
+            ProgressView()
+        case .failed:
+            errorView
+        case .loaded(let details):
+            contentView(details: details)
+        }
+    }
     
     private var customNavigationBar: some View {
         Text("Информация о перевозчике")
@@ -57,7 +68,7 @@ struct CarrierView: View {
     
     // MARK: - Private Views
     
-    private var content: some View {
+    private func contentView(details: CarrierDetails) -> some View {
         ScrollView {
             VStack(spacing: 24) {
                 logoView
@@ -69,7 +80,7 @@ struct CarrierView: View {
                     .foregroundStyle(Color(.ypBlack))
                     .frame(maxWidth: .infinity, alignment: .leading)
                 
-                contactInfoView
+                contactInfoView(details: details)
             }
             .padding(.horizontal, 16)
         }
@@ -77,7 +88,7 @@ struct CarrierView: View {
     
     private var errorView: some View {
         VStack(spacing: 16) {
-            Image(systemName: "exclamationmark.triangle")
+            Image(systemName: SFSymbol.xclamationmarkTriangle)
                 .font(.system(size: 48))
                 .foregroundStyle(Color(.ypGray))
             
@@ -119,8 +130,8 @@ struct CarrierView: View {
     }
     
     @ViewBuilder
-    private var contactInfoView: some View {
-        if let details = carrierDetails, details.hasAnyInfo {
+    private func contactInfoView(details: CarrierDetails) -> some View {
+        if details.hasAnyInfo {
             VStack(alignment: .leading, spacing: 16) {
                 if !details.email.isEmpty {
                     contactRow(title: "E-mail", value: details.email)
@@ -146,46 +157,26 @@ struct CarrierView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
-    private func loadCarrierDetails() async {
-        defer { isLoading = false }
-        
-        do {
-            let response = try await store.loadCarrierDetails(id: carrier.carrierCode ?? "")
-            carrierDetails = response
-            hasError = false
-        } catch {
-            carrierDetails = nil
-            hasError = true
-        }
-    }
-}
-
-// MARK: - CarrierDetails
-
-struct CarrierDetails: Equatable {
-    let email: String
-    let phone: String
-    
-    var hasAnyInfo: Bool {
-        !email.isEmpty || !phone.isEmpty
-    }
 }
 
 // MARK: - Preview
 
 #Preview("CarrierView") {
-    NavigationStack {
-        CarrierView(carrier: Carrier(
-            id: "1",
-            title: "РЖД",
-            logoURL: URL(string: ""),
-            departure: Date(),
-            arrival: Date().addingTimeInterval(7200),
-            duration: 7200,
-            hasTransfers: false,
-            carrierCode: "12"
-        ))
+    return NavigationStack {
+        CarrierView(
+            carrier: Carrier(
+                id: "1",
+                title: "РЖД",
+                logoURL: URL(string: ""),
+                departure: Date(),
+                arrival: Date().addingTimeInterval(7200),
+                duration: 7200,
+                hasTransfers: false,
+                carrierCode: "12"
+            ),
+            networkClient: AppDependencies.preview.networkClient
+        )
         .environment(SearchStore.preview)
+        .environment(AppDependencies.preview)
     }
 }

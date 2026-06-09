@@ -14,6 +14,7 @@ private enum AppPhase {
 
 struct RootView: View {
     @Environment(SearchStore.self) private var store
+    @Environment(AppDependencies.self) private var dependencies
     @State private var phase: AppPhase = .splash
 
     var body: some View {
@@ -25,11 +26,10 @@ struct RootView: View {
             case .splash:
                 SplashView()
                     .task {
-                        let minDelay = Task<Void, Never> {
-                            try? await Task.sleep(for: .seconds(1.5))
-                        }
-                        await store.loadCatalog()
-                        await minDelay.value
+                        async let minDelay: Void = Task.sleep(for: .seconds(1.5))
+                        async let catalog: Void = store.loadCatalog()
+                        _ = await (try? minDelay, catalog)
+
                         withAnimation(.easeInOut(duration: 0.25)) {
                             phase = .main
                         }

@@ -34,7 +34,7 @@ enum TimeSlot: String, CaseIterable, Identifiable {
     }
 }
 
-struct FilterState: Equatable {
+struct FilterState: Equatable, Sendable {
     var selectedTimeSlots: Set<TimeSlot> = []
     var showWithTransfers: Bool = true
 

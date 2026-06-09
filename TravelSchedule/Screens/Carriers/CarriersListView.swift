@@ -8,21 +8,26 @@
 import SwiftUI
 
 struct CarriersListView: View {
-    @Environment(SearchStore.self) private var store
+    @StateObject private var viewModel: CarriersListViewModel
+    @Environment(AppDependencies.self) private var dependencies
+
+    init(store: SearchStore) {
+        _viewModel = StateObject(wrappedValue: CarriersListViewModel(store: store))
+    }
 
     var body: some View {
         VStack(spacing: 0) {
-            Text("\(store.from?.title ?? "") → \(store.to?.title ?? "")")
+            Text("\(viewModel.fromTitle ?? "") → \(viewModel.toTitle ?? "")")
                 .font(.system(size: 24, weight: .bold))
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
 
             ZStack {
-                if store.isLoadingCarriers && store.carriers.isEmpty {
+                if isLoadingInitial {
                     ProgressView()
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                } else if store.filteredCarriers.isEmpty {
+                } else if isEmpty {
                     emptyView
                 } else {
                     contentView
@@ -32,11 +37,11 @@ struct CarriersListView: View {
         .background(Color(.ypWhite).ignoresSafeArea())
         .overlay(alignment: .bottom) {
             Button {
-                store.path.append(.filter)
+                viewModel.openFilter()
             } label: {
                 HStack(spacing: 4) {
                     Text("Уточнить время")
-                    if store.filter.isActive {
+                    if viewModel.filter.isActive {
                         Circle()
                             .fill(.ypRed)
                             .frame(width: 8, height: 8)
@@ -48,23 +53,27 @@ struct CarriersListView: View {
                 .frame(height: 60)
                 .background(Color(.ypBlue))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
-                .padding([.horizontal, .top], 16)            }
-            .disabled(store.carriers.isEmpty)
+                .padding([.horizontal, .top], 16)
+            }
+            .disabled(isFilterButtonDisabled)
         }
         .task {
-            guard !store.isLoadingCarriers, store.carriers.isEmpty else { return }
-            await store.search()
+            await viewModel.search()
+        }
+        .onAppear {
+            viewModel.refreshFilteredCarriers()
         }
         .toolbar(.hidden, for: .tabBar)
     }
 
-    // MARK: - Content
-
     private var contentView: some View {
         ScrollView {
             LazyVStack(spacing: 8) {
-                ForEach(store.filteredCarriers) { carrier in
-                    NavigationLink(destination: CarrierView(carrier: carrier)) {
+                ForEach(carriers) { carrier in
+                    NavigationLink(destination: CarrierView(
+                        carrier: carrier,
+                        networkClient: dependencies.networkClient
+                    )) {
                         CarrierCardView(carrier: carrier)
                     }
                     .buttonStyle(.plain)
@@ -75,8 +84,6 @@ struct CarriersListView: View {
         }
     }
 
-    // MARK: - Empty
-
     private var emptyView: some View {
         VStack(spacing: 16) {
             Text("Вариантов нет")
@@ -85,13 +92,36 @@ struct CarriersListView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
-}
+    
+    private var carriers: [Carrier] {
+        if case .loaded(let carriers) = viewModel.state {
+            return carriers
+        }
+        return []
+    }
 
-// MARK: - Preview
+    private var isLoadingInitial: Bool {
+        switch viewModel.state {
+        case .idle, .loading:
+            return true
+        case .empty, .loaded, .failed:
+            return false
+        }
+    }
 
-#Preview {
-    NavigationStack {
-        CarriersListView()
-            .environment(SearchStore.preview)
+    private var isEmpty: Bool {
+        if case .empty = viewModel.state {
+            return true
+        }
+        return false
+    }
+
+    private var isFilterButtonDisabled: Bool {
+        switch viewModel.state {
+        case .loaded, .empty, .failed:
+            return false
+        case .idle, .loading:
+            return true
+        }
     }
 }

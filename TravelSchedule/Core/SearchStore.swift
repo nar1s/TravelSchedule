@@ -9,6 +9,7 @@ import Observation
 import Foundation
 import SwiftUI
 
+@MainActor
 @Observable
 final class SearchStore {
     var from: Station?
@@ -82,6 +83,105 @@ final class SearchStore {
         self.dependencies = dependencies
     }
 
+    func setStation(_ station: Station, for direction: TripDirection) {
+        switch direction {
+        case .from: from = station
+        case .to:   to = station
+        }
+        path.removeAll()
+        carriers = []
+        filter = FilterState()
+    }
+
+    func swap() {
+        let tmp = from
+        from = to
+        to = tmp
+    }
+
+    func loadCatalog() async {
+        do {
+            let response = try await dependencies.networkClient.getAllStations()
+            catalog = mapToCatalog(response)
+        } catch {
+            catalog = nil
+        }
+    }
+
+    func search() async {
+        guard let from, let to else { return }
+
+        carriers = []
+        isLoadingCarriers = true
+        carriersError = nil
+
+        let searchDate = Calendar.current.startOfDay(for: Date())
+        let apiDate = apiDateFormatter.string(from: searchDate)
+
+        do {
+            let response = try await dependencies.networkClient.searchSchedule(
+                from: from.id,
+                to: to.id,
+                date: apiDate,
+                transfers: filter.showWithTransfers
+            )
+            carriers = mapToCarriers(response, searchDate: searchDate)
+        } catch {
+            carriersError = ErrorMapper.map(error)
+            carriers = []
+        }
+        isLoadingCarriers = false
+    }
+
+    func loadCarrierDetails(id: String) async throws -> CarrierDetails {
+        let response = try await dependencies.networkClient.getCarrierInfo(code: id)
+
+        guard let carrier = response.carrier else {
+            return CarrierDetails(email: "", phone: "")
+        }
+
+        let email = carrier.email ?? ""
+        let phone = carrier.phone ?? ""
+        return CarrierDetails(email: email, phone: phone)
+    }
+
+    func applyFilter(_ newFilter: FilterState) async {
+        let needsRefetch = filter.showWithTransfers != newFilter.showWithTransfers
+        filter = newFilter
+        if needsRefetch {
+            await search()
+        }
+    }
+    
+    func recoverOnReconnect() async {
+        if self.carriersError == .noInternet {
+            self.carriersError = nil
+        }
+
+        async let catalogLoad: Void = loadCatalogIfNeeded()
+        async let searchRetry: Void = retryCarriersSearchIfNeeded()
+
+        await catalogLoad
+        await searchRetry
+    }
+    
+    @MainActor
+    private func loadCatalogIfNeeded() async {
+        if self.catalog == nil {
+            await self.loadCatalog()
+        }
+    }
+    
+    @MainActor
+    private func retryCarriersSearchIfNeeded() async {
+        let needsRetry = self.path.last == .carriers
+            && !self.isLoadingCarriers
+            && self.carriers.isEmpty
+        if needsRetry {
+            await self.search()
+        }
+    }
+
     private func parseDate(_ string: String?, baseDate: Date?) -> Date? {
         guard let string, !string.isEmpty else { return nil }
 
@@ -120,89 +220,6 @@ final class SearchStore {
         }
 
         return nil
-    }
-
-    func setStation(_ station: Station, for direction: TripDirection) {
-        switch direction {
-        case .from:
-            from = station
-        case .to:
-            to = station
-        }
-        Task { @MainActor in
-            path.removeAll()
-            carriers = []
-            filter = FilterState()
-        }
-    }
-
-    func swap() {
-        let tmp = from
-        from = to
-        to = tmp
-    }
-
-    func loadCatalog() async {
-        do {
-            let response = try await dependencies.stationsListService.getAllStations()
-            catalog = mapToCatalog(response)
-        } catch {
-            catalog = nil
-        }
-    }
-
-    func search() async {
-        guard let from, let to else { return }
-
-        guard dependencies.connectivityMonitor.isOnline else {
-            carriersError = .noInternet
-            isLoadingCarriers = false
-            carriers = []
-            return
-        }
-
-        carriers = []
-        isLoadingCarriers = true
-        carriersError = nil
-
-        let searchDate = Calendar.current.startOfDay(for: Date())
-        let apiDate = apiDateFormatter.string(from: searchDate)
-
-        do {
-            let response = try await dependencies.searchService
-                .getScheduleBetweenStations(
-                    from: from.id,
-                    to: to.id,
-                    date: apiDate,
-                    transfers: filter.showWithTransfers
-                )
-            carriers = mapToCarriers(response, searchDate: searchDate)
-        } catch {
-            carriersError = ErrorMapper.map(error)
-            carriers = []
-        }
-        isLoadingCarriers = false
-    }
-    
-    func loadCarrierDetails(id: String) async throws -> CarrierDetails {
-        let response = try await dependencies.carrierService.getCarrierInfo(code: id)
-        
-        guard let carrier = response.carrier else {
-            return CarrierDetails(email: "", phone: "")
-        }
-
-        let email = carrier.email ?? ""
-        let phone = carrier.phone ?? ""
-        
-        return CarrierDetails(email: email, phone: phone)
-    }
-
-    func applyFilter(_ newFilter: FilterState) async {
-        let needsRefetch = filter.showWithTransfers != newFilter.showWithTransfers
-        filter = newFilter
-        if needsRefetch {
-            await search()
-        }
     }
 
     private func mapToCarriers(_ response: Search, searchDate: Date) -> [Carrier] {
@@ -296,12 +313,7 @@ final class SearchStore {
 
 extension SearchStore {
     static var preview: SearchStore {
-        let store: SearchStore = {
-            guard let dependencies = try? AppDependencies(apikey: Constants.apiKey) else {
-                fatalError("Failed to initialize AppDependencies for preview")
-            }
-            return SearchStore(dependencies: dependencies)
-        }()
+        let store = SearchStore(dependencies: AppDependencies.preview)
         
         store.catalog = StationsCatalog(
             cities: [

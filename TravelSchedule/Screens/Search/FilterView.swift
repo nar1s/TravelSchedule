@@ -8,10 +8,12 @@
 import SwiftUI
 
 struct FilterView: View {
-    @Environment(SearchStore.self) private var store
+    @StateObject private var viewModel: FilterViewModel
     @Environment(\.dismiss) private var dismiss
 
-    @State private var draft: FilterState = FilterState()
+    init(store: SearchStore) {
+        _viewModel = StateObject(wrappedValue: FilterViewModel(store: store))
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -37,11 +39,17 @@ struct FilterView: View {
                 .padding(.bottom, 16)
 
             VStack(spacing: 0) {
-                radioRow(title: "Да", isSelected: draft.showWithTransfers) {
-                    draft.showWithTransfers = true
+                radioRow(
+                    title: "Да",
+                    isSelected: viewModel.draft.showWithTransfers
+                ) {
+                    viewModel.setTransfers(true)
                 }
-                radioRow(title: "Нет", isSelected: !draft.showWithTransfers) {
-                    draft.showWithTransfers = false
+                radioRow(
+                    title: "Нет",
+                    isSelected: !viewModel.draft.showWithTransfers
+                ) {
+                    viewModel.setTransfers(false)
                 }
             }
             .padding(.horizontal, 16)
@@ -49,9 +57,10 @@ struct FilterView: View {
             Spacer()
 
             Button {
-                let newFilter = draft
-                dismiss()
-                Task { await store.applyFilter(newFilter) }
+                Task { @MainActor in
+                    await viewModel.apply()
+                    dismiss()
+                }
             } label: {
                 Text("Применить")
                     .font(.system(size: 17, weight: .bold))
@@ -66,21 +75,14 @@ struct FilterView: View {
         }
         .background(Color(.ypWhite))
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            draft = store.filter
-        }
     }
 
     @ViewBuilder
     private func checkboxRow(slot: TimeSlot) -> some View {
-        let isSelected = draft.selectedTimeSlots.contains(slot)
+        let isSelected = viewModel.draft.selectedTimeSlots.contains(slot)
 
         Button {
-            if isSelected {
-                draft.selectedTimeSlots.remove(slot)
-            } else {
-                draft.selectedTimeSlots.insert(slot)
-            }
+            viewModel.toggle(slot)
         } label: {
             HStack {
                 Text("\(slot.rawValue) \(slot.subtitle)")
@@ -136,7 +138,5 @@ struct FilterView: View {
 }
 
 #Preview {
-    FilterView()
-        .environment(SearchStore.preview)
+    FilterView(store: SearchStore.preview)
 }
-

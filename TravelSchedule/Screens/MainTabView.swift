@@ -8,73 +8,75 @@
 import SwiftUI
 
 struct MainTabView: View {
+    
+    // MARK: - Environment
+    
     @Environment(SearchStore.self) private var store
     @Environment(ConnectivityMonitor.self) private var connectivity
+    @Environment(AppDependencies.self) private var dependencies
     @Environment(\.scenePhase) private var scenePhase
 
+    // MARK: - Body
+    
     var body: some View {
         ZStack {
-            Color(.ypWhite)
-                .ignoresSafeArea()
-
-            TabView {
-                MainScreenView()
-                    .overlay { errorOverlay }
-                    .tabItem {
-                        Image(.schedule)
-                            .renderingMode(.template)
-                            .accessibilityLabel("Расписание")
-                    }
-
-                SettingsView()
-                    .overlay { errorOverlay }
-                    .tabItem {
-                        Image(.settings)
-                            .renderingMode(.template)
-                            .accessibilityLabel("Настройки")
-                    }
-            }
-            .tint(.primary)
-            .toolbarBackground(Color(.ypWhite), for: .tabBar)
-            .toolbarBackground(.visible, for: .tabBar)
-            .onChange(of: connectivity.isOnline) { _, isOnline in
-                guard isOnline else { return }
-                if store.carriersError == .noInternet {
-                    store.carriersError = nil
-                }
-                Task {
-                    if store.catalog == nil {
-                        await store.loadCatalog()
-                    }
-                    let onCarriers = store.path.last == .carriers
-                    let needsRetry = onCarriers
-                        && !store.isLoadingCarriers
-                        && store.carriers.isEmpty
-                    if needsRetry {
-                        await store.search()
-                    }
-                }
-            }
-            .onChange(of: scenePhase) {_, new in
-                guard new == .active, connectivity.isOnline else { return }
-                if store.carriersError == .noInternet {
-                    store.carriersError = nil
-                }
-                Task {
-                    if store.catalog == nil {
-                        await store.loadCatalog()
-                    }
-                    let onCarriers = store.path.last == .carriers
-                    let needsRetry = onCarriers
-                    && !store.isLoadingCarriers
-                    && store.carriers.isEmpty
-                    if needsRetry {
-                        await store.search()
-                    }
-                }
-            }
+            backgroundView
+            tabContent
         }
     }
+
+    // MARK: - Subviews
+
+    private var backgroundView: some View {
+        Color(.ypWhite)
+            .ignoresSafeArea()
+    }
+
+    private var tabContent: some View {
+        TabView {
+            scheduleTab
+            settingsTab
+        }
+        .tint(.primary)
+        .toolbarBackground(Color(.ypWhite), for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+    }
+
+    private var scheduleTab: some View {
+        MainScreenView(store: store)
+            .environment(dependencies)
+            .overlay { errorOverlay }
+            .tabItem {
+                Image(.schedule)
+                    .renderingMode(.template)
+                    .accessibilityLabel("Расписание")
+            }
+    }
+
+    private var settingsTab: some View {
+        SettingsView()
+            .environment(dependencies)
+            .overlay { errorOverlay }
+            .tabItem {
+                Image(.settings)
+                    .renderingMode(.template)
+                    .accessibilityLabel("Настройки")
+            }
+    }
+
+    private var connectivityRecovery: some View {
+        Color.clear
+            .task(id: connectivity.isOnline) {
+                guard connectivity.isOnline else { return }
+                await store.recoverOnReconnect()
+            }
+            .task(id: scenePhase) {
+                guard scenePhase == .active, connectivity.isOnline else { return }
+                await store.recoverOnReconnect()
+            }
+    }
+
+    // MARK: - Error overlay
 
     private var showNoInternet: Bool {
         !connectivity.isOnline || store.carriersError == .noInternet
@@ -92,8 +94,11 @@ struct MainTabView: View {
     }
 }
 
+// MARK: - Preview
+
 #Preview {
-    MainTabView()
+    return MainTabView()
         .environment(SearchStore.preview)
         .environment(ConnectivityMonitor())
+        .environment(AppDependencies.preview)
 }
